@@ -1,0 +1,46 @@
+#box-body {
+    background-color: rgb(5, 10, 163);
+    height: 100%;
+}
+
+#box-caixa {
+    background-color: rgb(26, 109, 187);
+    border-radius: 10px;
+    /* padding: 20px; */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#link-senha {
+    color: rgb(255, 255, 255);
+    text-decoration: none;
+}
+
+#link-senha:hover {
+    color: rgb(15, 148, 236);
+    text-decoration: none;
+}
+
+#link-cadastrar {
+    color: rgb(255, 255, 255);
+    text-decoration: none;
+}
+
+#link-cadastrar:hover {
+    color: rgb(15, 148, 236);
+    text-decoration: none;
+}
+
+.img-login {
+    height: 150px;
+    width: 300px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+}
+
+@media (max-width: 400px) {
+    .img-login {
+        height: 150px;
+        width: 250px;
+    }
+
+}

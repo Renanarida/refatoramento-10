@@ -1,0 +1,190 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+      font-family: Arial, Helvetica, sans-serif;
+}
+
+header {
+    padding: 0; 
+    background-color: rgb(26, 109, 187);
+}
+
+body {
+    background-color: rgb(5, 10, 163);
+    margin: 0;
+    display: flex;
+    place-items: center;
+    min-width: 320px;
+    min-height: 100vh;
+    flex-direction: row;
+    align-content: center;
+    justify-content: center;
+}
+
+
+#titulo-1 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: aliceblue;
+    padding-top: 6%;
+    font-size: 35px;
+    margin-top: 20px;
+    margin-bottom: 20px;  
+}
+
+.box-texto {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: aliceblue;
+    padding-top: 6%;
+    font-size: 25px;
+    margin-top: 20px;
+    margin-bottom: 20px;   
+}
+
+.titulo-paragrafo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: aliceblue;
+    padding-top: 6%;
+    font-size: 25px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.conteudo-ameacas {
+    background-size: cover;
+    background-position: center;
+    padding: 40px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+}
+
+.conteudo-box {
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(228, 228, 228, 0.7); 
+    color: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 300px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    transition: transform 0.3s ease;
+}
+
+.conteudo-box:hover {
+    transform: scale(1.03);
+}
+
+.box-links {
+    display: flex;
+    /* flex-direction: column; */
+    flex-wrap: nowrap;
+    align-content: center;
+    justify-content: center;
+}
+
+#botao-cadastrar {
+  padding: 15px 25px;
+  background-color: #0ebbda;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  text-decoration: none;
+  margin: 10px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#botao-cadastrar:hover {
+    background-color: #0d98b1;
+    color: black;
+    transition: 0.07;
+}
+
+#botao-login {
+  padding: 15px 25px;
+  background-color: #0ebbda;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  text-decoration: none;
+  margin: 10px;
+  border-radius: 10px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#botao-login:hover {
+    background-color: #0d98b1;
+    color: black;
+    transition: 0.07;
+}
+
+#botao-visitante {
+  padding: 15px 25px;
+  background-color: #0ebbda;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  text-decoration: none;
+  margin: 10px;
+  border-radius: 10px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#botao-visitante:hover {
+    background-color: #0d98b1;
+    color: black;
+    transition: 0.07;
+}
+
+footer {
+    background-color: rgb(26, 109, 187);
+    color: white;
+    padding: 20px 30px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    font-size: 14px;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
+}
+
+.footer-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-links a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: #d1eaff;
+}
