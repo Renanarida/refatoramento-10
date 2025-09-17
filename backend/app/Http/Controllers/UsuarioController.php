@@ -9,25 +9,19 @@ use Illuminate\Support\Facades\Hash;
 class UsuarioController extends Controller
 {
     public function store(Request $request)
-    {
+   {
+    $request->validate([
+        'nome'   => ['required','string','min:2'],
+        'email'  => ['required','email','unique:users,email'],
+        'senha'  => ['required','string','min:6'],
+    ]);
 
-        print_r($request->all()); die();
+    User::create([
+        'name'     => $request->input('nome'),
+        'email'    => $request->input('email'),
+        'password' => Hash::make($request->input('senha')),
+    ]);
 
-        $validatedData = $request->validate([
-            'nome' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'senha' => 'required|string|min:6',
-        ]);
-
-        $user = User::create([
-            'nome' => $validatedData['nome'],
-            'email' => $validatedData['email'],
-            'senha' => Hash::make($validatedData['senha']),
-        ]);
-
-        return response()->json([
-            'message' => 'Usuário criado com sucesso!',
-            'user' => $user
-        ], 201);
-    }
+    return response()->json(['ok' => true]);
+   }
 }
