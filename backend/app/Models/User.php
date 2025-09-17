@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -13,7 +12,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Os atributos que podem ser atribuídos em massa.
      *
      * @var array<int, string>
      */
@@ -24,7 +23,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Os atributos que devem ficar ocultos na serialização.
      *
      * @var array<int, string>
      */
@@ -34,7 +33,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be cast.
+     * Os atributos que devem ser convertidos.
      *
      * @var array<string, string>
      */
@@ -42,4 +41,21 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Relação: reuniões criadas pelo usuário (1:N).
+     */
+    public function reunioesCriadas()
+    {
+        return $this->hasMany(\App\Models\Reuniao::class, 'user_id');
+    }
+
+    /**
+     * Relação: reuniões em que o usuário participa (N:N via pivot).
+     */
+    public function reunioes()
+    {
+        return $this->belongsToMany(\App\Models\Reuniao::class, 'reuniao_user')
+                    ->withTimestamps();
+    }
 }
