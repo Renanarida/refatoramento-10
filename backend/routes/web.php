@@ -17,14 +17,14 @@ use Illuminate\Support\Facades\Route;
 //     return view('home');
 // });
 
-Route::get('/{any}', function () {
-    return view('app'); // ou return file_get_contents(public_path('index.html'));
-})->where('any', '.*');
+// Route::get('/{any}', function () {
+//     return view('app'); // ou return file_get_contents(public_path('index.html'));
+// })->where('any', '.*');
 
-Route::get('/cadastrar', function () {
-    return view('cadastrar');
-});
+// Route::get('/cadastrar', function () {
+//     return view('cadastrar');
+// });
 
-Route::get('/login', function () {
-    return view('login');
-});
+// Route::get('/login', function () {
+//     return view('login');
+// });
