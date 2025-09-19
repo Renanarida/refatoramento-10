@@ -8,23 +8,30 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('reunioes', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')               // dono/criador
-                  ->constrained('users')
-                  ->cascadeOnDelete();
+            $table->bigIncrements('id');
+            $table->foreignId('user_id')->constrained('users'); // criador/dono
             $table->string('titulo');
             $table->text('descricao')->nullable();
-            $table->dateTime('inicio');                // data/hora da reunião
-            $table->dateTime('fim')->nullable();       // opcional
-            $table->string('local')->nullable();       // link/ sala
+            $table->date('data')->index();
+            $table->time('hora')->index();
+            $table->string('local')->nullable();
+            $table->json('metadados')->nullable(); // ex: { "meet_url": "..." }
             $table->timestamps();
+        });
 
-            $table->index(['user_id','inicio']);
+        Schema::create('reuniao_participantes', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->foreignId('reuniao_id')->constrained('reunioes')->onDelete('cascade');
+            $table->string('nome')->nullable();
+            $table->string('email')->nullable()->index();
+            $table->string('papel')->nullable(); // host, convidado, etc.
+            $table->timestamps();
         });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('reuniao_participantes');
         Schema::dropIfExists('reunioes');
     }
 };

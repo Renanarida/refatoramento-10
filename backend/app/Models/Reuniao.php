@@ -9,22 +9,16 @@ class Reuniao extends Model
     protected $table = 'reunioes';
 
     protected $fillable = [
-        'user_id','titulo','descricao','inicio','fim','local'
+        'user_id', 'titulo', 'descricao', 'data', 'hora', 'local', 'metadados',
     ];
 
     protected $casts = [
-        'inicio' => 'datetime',
-        'fim'    => 'datetime',
+        'data' => 'date',
+        'metadados' => 'array',
     ];
-
-    public function dono()
-    {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
-    }
 
     public function participantes()
     {
-        return $this->belongsToMany(\App\Models\User::class, 'reuniao_user')
-                    ->withTimestamps();
+        return $this->hasMany(ReuniaoParticipante::class, 'reuniao_id');
     }
 }
