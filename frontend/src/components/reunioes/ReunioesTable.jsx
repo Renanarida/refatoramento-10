@@ -2,8 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const API = "http://localhost:8000"; // ajuste se necessário
+const EV_SALVA = "reuniao:salva";
 
-export default function ReunioesTable({ onNova = () => { }, onEditar = () => { } }) {
+export default function ReunioesTable({
+  onNova = () => {},
+  onEditar = () => {},
+  refreshTick = 0, // 👈 suporte a tick externo
+}) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -46,11 +51,18 @@ export default function ReunioesTable({ onNova = () => { }, onEditar = () => { }
     }
   };
 
-  useEffect(() => { fetchData(); }, [q, dataIni, dataFim, page, perPage]);
+  // carrega em mudanças de filtro/página + quando refreshTick mudar
+  useEffect(() => { fetchData(); }, [q, dataIni, dataFim, page, perPage, refreshTick]);
+
+  // ouve o evento global "reuniao:salva" e recarrega
   useEffect(() => {
-    const handler = () => fetchData();
-    window.addEventListener("reuniao:salva", handler);
-    return () => window.removeEventListener("reuniao:salva", handler);
+    const handler = () => {
+      // opcional: volta pra primeira página ao criar
+      setPage(1);
+      fetchData();
+    };
+    window.addEventListener(EV_SALVA, handler);
+    return () => window.removeEventListener(EV_SALVA, handler);
   }, []);
 
   const ordenar = (key) => {
@@ -58,13 +70,36 @@ export default function ReunioesTable({ onNova = () => { }, onEditar = () => { }
     else { setSortKey(key); setSortDir("asc"); }
   };
 
+  // compara datas/horas corretamente quando a coluna for "data" ou "hora"
   const itensOrdenados = useMemo(() => {
     const arr = [...itens];
     arr.sort((a, b) => {
-      const va = (a?.[sortKey] ?? "") + "";
-      const vb = (b?.[sortKey] ?? "") + "";
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      const va = a?.[sortKey];
+      const vb = b?.[sortKey];
+
+      // ordenação especial para data/hora
+      if (sortKey === "data") {
+        const da = va ? new Date(va) : new Date(0);
+        const db = vb ? new Date(vb) : new Date(0);
+        return sortDir === "asc" ? da - db : db - da;
+      }
+      if (sortKey === "hora") {
+        const toMin = (h) => {
+          if (!h) return -1;
+          // espera "HH:MM" ou "HH:MM:SS"
+          const [H = "0", M = "0"] = String(h).split(":");
+          return parseInt(H, 10) * 60 + parseInt(M, 10);
+        };
+        const ha = toMin(va);
+        const hb = toMin(vb);
+        return sortDir === "asc" ? ha - hb : hb - ha;
+      }
+
+      // fallback string
+      const sva = (va ?? "") + "";
+      const svb = (vb ?? "") + "";
+      if (sva < svb) return sortDir === "asc" ? -1 : 1;
+      if (sva > svb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
     return arr;
@@ -103,7 +138,7 @@ export default function ReunioesTable({ onNova = () => { }, onEditar = () => { }
 
         {/* Linha 2: filtros + botão cadastrar à direita */}
         <div className="d-flex flex-wrap gap-2 align-items-end mt-3">
-          <div className="me-auto" /> {/* empurra os filtros para a esquerda e libera espaço */}
+          <div className="me-auto" />
           <div>
             <label className="form-label mb-1">Buscar</label>
             <input
@@ -145,9 +180,7 @@ export default function ReunioesTable({ onNova = () => { }, onEditar = () => { }
             </select>
           </div>
 
-          {/* Botão foi movido pra cá */}
           <div className="ms-auto">
-            {/* label invisível só pra alinhar verticalmente com os inputs */}
             <label className="form-label mb-1 d-block invisible">.</label>
             <button className="btn btn-primary" onClick={onNova}>Cadastrar</button>
           </div>
@@ -189,7 +222,6 @@ export default function ReunioesTable({ onNova = () => { }, onEditar = () => { }
                       <td>{r.local || ""}</td>
                       <td className="text-end">
                         <div className="btn-group">
-                          
                           <button
                             className="btn btn-sm btn-outline-secondary"
                             onClick={() => onEditar(r)}

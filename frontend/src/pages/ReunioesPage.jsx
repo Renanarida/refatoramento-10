@@ -8,22 +8,33 @@ import ModalReuniao from "../components/reunioes/ModalReuniao";
 export default function ReunioesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [refreshTick, setRefreshTick] = useState(0); // 👈
 
   const handleNova = () => { setEditando(null); setShowModal(true); };
   const handleEditar = (registro) => { setEditando(registro); setShowModal(true); };
 
   return (
     <>
-      <HeaderComSidebar /* userName="Renan Arida" */ />
+      <HeaderComSidebar />
 
       <div className="container py-4">
-        <CardsReunioes />
-        <ReunioesTable onNova={handleNova} onEditar={handleEditar} />
+        {/* Se quiser, os cards também atualizam */}
+        <CardsReunioes refreshTick={refreshTick} /> 
+
+        <ReunioesTable
+          onNova={handleNova}
+          onEditar={handleEditar}
+          refreshTick={refreshTick}  // 👈 passa o tick pra tabela
+        />
+
         {showModal && (
           <ModalReuniao
             registro={editando}
             onClose={() => setShowModal(false)}
-            onSaved={() => setShowModal(false)}
+            onSaved={(novoRegistro) => {
+              setShowModal(false);
+              setRefreshTick(t => t + 1); // 👈 dispara refresh
+            }}
           />
         )}
       </div>
