@@ -3,10 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/Reuniao-email.png";
 import "../style/login.css";
 
-
 const Login = () => {
   const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
+  const [password, setPassword] = useState(""); // <- troquei 'senha' por 'password'
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,10 +19,18 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // 1) Pega o cookie CSRF
+      await fetch("http://localhost:8000/sanctum/csrf-cookie", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      // 2) Faz login
       const response = await fetch("http://localhost:8000/api/login", {
         method: "POST",
+        credentials: "include", // importante p/ cookies funcionarem
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha }),
+        body: JSON.stringify({ email, password }), // <- agora vai como 'password'
       });
 
       const data = await response.json();
@@ -32,10 +39,8 @@ const Login = () => {
         setErro(data.message || "Email ou senha incorretos.");
       } else {
         setSucesso("Login realizado com sucesso!");
-        // Aqui você pode salvar o token, usuário, etc.
-
-        // Exemplo: redirecionar para dashboard após login
-        navigate("/dashboard"); // ajuste conforme sua rota real
+        // Aqui você pode salvar user no estado/contexto se precisar
+        navigate("/reunioes", { replace: true }); // redireciona para /reunioes
       }
     } catch (error) {
       setErro("Erro na comunicação com o servidor.");
@@ -45,7 +50,10 @@ const Login = () => {
   };
 
   return (
-    <div className="d-flex justify-content-center align-items-center" style={{ backgroundColor: "#f8f9fa" }}>
+    <div
+      className="d-flex justify-content-center align-items-center"
+      style={{ backgroundColor: "#f8f9fa",}}
+    >
       <div className="card p-4" style={{ width: "350px" }}>
         <h3 className="mb-3">Login</h3>
         <img
@@ -72,19 +80,23 @@ const Login = () => {
             />
           </div>
           <div className="mb-3">
-            <label htmlFor="senha" className="form-label">
+            <label htmlFor="password" className="form-label">
               Senha
             </label>
             <input
               type="password"
-              id="senha"
+              id="password"
               required
               className="form-control"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <button disabled={loading} type="submit" className="btn btn-primary w-100">
+          <button
+            disabled={loading}
+            type="submit"
+            className="btn btn-primary w-100"
+          >
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>

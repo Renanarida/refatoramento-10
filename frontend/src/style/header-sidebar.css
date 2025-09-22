@@ -1,0 +1,169 @@
+:root {
+  --hsd-header-h: 64px;
+  --hsd-bg: #0f172a;          /* slate-900 */
+  --hsd-bg-2: #111827;        /* gray-900 */
+  --hsd-txt: #e5e7eb;         /* gray-200 */
+  --hsd-muted: #9ca3af;       /* gray-400 */
+  --hsd-accent: #2563eb;      /* blue-600 */
+  --hsd-border: #1f2937;      /* gray-800 */
+  --hsd-card: #0b1220;
+  --hsd-shadow: rgba(0,0,0,.35);
+}
+
+/* HEADER FULL-WIDTH FIXO */
+.hsd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--hsd-header-h);
+  padding: 0 16px;
+  background: linear-gradient(180deg, var(--hsd-bg), var(--hsd-bg-2));
+  color: var(--hsd-txt);
+  border-bottom: 1px solid var(--hsd-border);
+}
+
+.hsd-header--fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;     /* ocupa 100% da largura */
+  z-index: 100; /* acima do conteúdo */
+  box-shadow: 0 6px 12px -6px var(--hsd-shadow);
+}
+
+/* Espaçador equivalente à altura do header */
+.hsd-header-spacer {
+  height: var(--hsd-header-h);
+}
+
+.hsd-left { display: flex; align-items: center; gap: 12px; }
+.hsd-title { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .2px; }
+
+.hsd-right { display: flex; align-items: center; gap: 12px; }
+
+.hsd-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--hsd-border);
+  border-radius: 999px;
+  background: var(--hsd-card);
+}
+
+.hsd-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--hsd-accent);
+  color: white;
+  box-shadow: 0 2px 6px -2px var(--hsd-shadow);
+}
+
+.hsd-username {
+  max-width: 220px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+/* Botão hambúrguer */
+.hsd-burger {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 38px;
+  height: 38px;
+  background: var(--hsd-card);
+  border: 1px solid var(--hsd-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.hsd-burger__bar {
+  width: 18px;
+  height: 2px;
+  background: var(--hsd-txt);
+  display: block;
+  margin: 0 auto;
+}
+
+/* Overlay */
+.hsd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+  z-index: 95;
+}
+.hsd-overlay--show {
+  background: rgba(0,0,0,.45);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Sidebar */
+.hsd-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  width: 300px;
+  background: var(--hsd-bg-2);
+  color: var(--hsd-txt);
+  border-right: 1px solid var(--hsd-border);
+  transform: translateX(-100%);
+  transition: transform .25s ease;
+  z-index: 99; /* abaixo do header mas acima do conteúdo */
+  display: flex;
+  flex-direction: column;
+}
+.hsd-sidebar--open { transform: translateX(0); }
+
+.hsd-sidebar__header {
+  display: flex; align-items: center; justify-content: space-between;
+  height: var(--hsd-header-h); padding: 0 14px;
+  border-bottom: 1px solid var(--hsd-border);
+  background: var(--hsd-bg);
+}
+
+.hsd-brand { font-weight: 700; letter-spacing: .3px; }
+
+.hsd-icon-btn {
+  background: transparent; color: var(--hsd-txt);
+  border: 1px solid var(--hsd-border); border-radius: 10px;
+  width: 38px; height: 38px; cursor: pointer;
+}
+
+.hsd-nav { display: flex; flex-direction: column; padding: 10px; gap: 4px; }
+.hsd-nav__link {
+  text-decoration: none;
+  color: var(--hsd-txt);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+.hsd-nav__link:hover { background: #0f172a; border-color: var(--hsd-border); }
+
+.hsd-sidebar__footer { margin-top: auto; padding: 10px; border-top: 1px solid var(--hsd-border); }
+.hsd-logout-btn {
+  width: 100%;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.hsd-logout-btn:hover { filter: brightness(1.05); }
+
+@media (max-width: 420px) {
+  .hsd-username { display: none; }
+}
