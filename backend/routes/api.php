@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\ReuniaoController;
 
@@ -16,6 +17,11 @@ use App\Http\Controllers\ReuniaoController;
 
 // rota pública para cadastro de usuários
 Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store');
+
+// rota pública para login
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 
 // rotas de reuniões (públicas por enquanto, você pode mover para dentro de 'auth:sanctum' depois se quiser proteger)
 Route::prefix('reunioes')->group(function () {
