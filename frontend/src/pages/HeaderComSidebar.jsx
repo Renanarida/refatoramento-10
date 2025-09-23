@@ -1,23 +1,45 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import "../style/header-sidebar.css"; // <- está em src/style
+import "../style/header-sidebar.css";
 import menuIcon from "../assets/menu-white.svg";
+
+const API = "http://localhost:8000/api";
 
 export default function HeaderComSidebar({ userName: userNameProp }) {
   const [open, setOpen] = useState(false);
+  const [me, setMe] = useState(null);            // 👈 dados do usuário autenticado
+  const [busy, setBusy] = useState(false);       // 👈 estado de upload
+  const fileRef = useRef(null);                  // 👈 input de arquivo
   const navigate = useNavigate();
   const location = useLocation();
 
-  // nome do usuário (prop > localStorage > fallback)
-  const userName = useMemo(() => {
-    if (userNameProp && String(userNameProp).trim()) return userNameProp;
-    const saved =
+  // nome: prop > localStorage > /api/me > fallback
+  const userNameFromStorage = useMemo(() => {
+    return (
+      (userNameProp && String(userNameProp).trim()) ||
       localStorage.getItem("user_name") ||
-      (JSON.parse(localStorage.getItem("user") || "{}").name);
-    return saved || "Usuário";
+      (JSON.parse(localStorage.getItem("user") || "{}").name) ||
+      "Usuário"
+    );
   }, [userNameProp]);
 
+  const userName = me?.name || userNameFromStorage;
+
   useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  // carrega /api/me para descobrir avatar_url (e nome, se quiser)
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        setMe(data);
+        // opcional: atualizar o nome salvo localmente
+        if (data?.name) localStorage.setItem("user_name", data.name);
+      })
+      .catch(() => {});
+  }, []);
 
   const toggle = () => setOpen((v) => !v);
 
@@ -34,6 +56,45 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
     .join("");
+
+  // abre o seletor
+  const openPicker = () => {
+    if (busy) return;
+    fileRef.current?.click();
+  };
+
+  // faz upload do avatar
+  const onPick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Faça login para trocar a foto.");
+      e.target.value = "";
+      return;
+    }
+    try {
+      setBusy(true);
+      const form = new FormData();
+      form.append("avatar", file);
+
+      const resp = await fetch(`${API}/me/avatar`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }, // não setar Content-Type manual
+        body: form,
+      });
+
+      if (!resp.ok) throw new Error("Falha ao enviar imagem");
+      const data = await resp.json();
+      setMe((prev) => ({ ...(prev || {}), avatar_url: data.avatar_url }));
+    } catch (err) {
+      console.error(err);
+      alert("Não foi possível enviar a imagem.");
+    } finally {
+      setBusy(false);
+      e.target.value = ""; // reseta input para permitir mesmo arquivo de novo
+    }
+  };
 
   return (
     <>
@@ -74,17 +135,45 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
             aria-controls="sidebar"
             aria-expanded={open}
           >
-
             <img src={menuIcon} alt="menu" className="hsd-burger-icon" />
-            
           </button>
           <h1 className="hsd-title">Reuniões</h1>
         </div>
 
         <div className="hsd-right">
-          <div className="hsd-user">
-            <div className="hsd-avatar" aria-hidden="true">{initials || "U"}</div>
+          {/* CHIP CLICÁVEL PARA TROCAR A FOTO */}
+          <div
+            className="hsd-user"
+            onClick={openPicker}
+            title={busy ? "Enviando..." : "Clique para trocar a foto"}
+            style={{ cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1 }}
+          >
+            {/* Avatar ou iniciais */}
+            {me?.avatar_url ? (
+              <img
+                src={me.avatar_url}
+                alt="avatar"
+                className="hsd-avatar-img"
+                style={{
+                  width: 28, height: 28, borderRadius: "50%", objectFit: "cover",
+                  marginRight: 8
+                }}
+              />
+            ) : (
+              <div className="hsd-avatar" aria-hidden="true">{initials || "U"}</div>
+            )}
+
             <span className="hsd-username" title={userName}>{userName}</span>
+
+            {/* input de arquivo escondido */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={onPick}
+              style={{ display: "none" }}
+              disabled={busy}
+            />
           </div>
         </div>
       </header>

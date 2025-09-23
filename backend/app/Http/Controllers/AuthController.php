@@ -20,6 +20,8 @@ class AuthController extends Controller
         if (!$user || !Hash::check($data['password'], $user->password)) {
             return response()->json(['message' => 'Credenciais inválidas'], 422);
         }
+        $token = $user->createToken('app-token')->plainTextToken;
+return response()->json(['token' => $token, 'user' => $user]);
 
         // Autentica na sessão (cookie) — sem redirect
         Auth::login($user, true);

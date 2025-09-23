@@ -38,6 +38,7 @@ const Login = () => {
       if (!response.ok) {
         setErro(data.message || "Email ou senha incorretos.");
       } else {
+        localStorage.setItem("token", data.token);
         setSucesso("Login realizado com sucesso!");
         // Aqui você pode salvar user no estado/contexto se precisar
         navigate("/reunioes", { replace: true }); // redireciona para /reunioes

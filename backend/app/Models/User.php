@@ -12,7 +12,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * Os atributos que podem ser atribuídos em massa.
+     * Os atributos que podem ser preenchidos em massa.
      *
      * @var array<int, string>
      */
@@ -20,10 +20,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar_path', // 👈 adicionado
     ];
 
     /**
-     * Os atributos que devem ficar ocultos na serialização.
+     * Os atributos que devem ser escondidos para serialização.
      *
      * @var array<int, string>
      */
@@ -33,29 +34,26 @@ class User extends Authenticatable
     ];
 
     /**
-     * Os atributos que devem ser convertidos.
+     * Os atributos que devem ser adicionados ao JSON de retorno.
      *
-     * @var array<string, string>
+     * @var array<int, string>
      */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
+    protected $appends = [
+        'avatar_url', // 👈 adicionado
     ];
 
     /**
-     * Relação: reuniões criadas pelo usuário (1:N).
+     * Accessor para retornar a URL pública do avatar.
+     *
+     * @return string|null
      */
-    public function reunioesCriadas()
+    public function getAvatarUrlAttribute()
     {
-        return $this->hasMany(\App\Models\Reuniao::class, 'user_id');
-    }
+        if (!$this->avatar_path) {
+            return null;
+        }
 
-    /**
-     * Relação: reuniões em que o usuário participa (N:N via pivot).
-     */
-    public function reunioes()
-    {
-        return $this->belongsToMany(\App\Models\Reuniao::class, 'reuniao_user')
-                    ->withTimestamps();
+        // gera a URL pública usando o storage
+        return asset('storage/' . $this->avatar_path);
     }
 }
