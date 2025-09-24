@@ -23,7 +23,7 @@ Route::post('/login', [AuthController::class, 'login']);                        
 Route::middleware('auth:sanctum')->group(function () {
     // sessão
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']); // usa o controller (evita conflito com closure)
+    Route::get('/me', [AuthController::class, 'me']); // usa o controller
 
     // perfil: upload de avatar
     Route::post('/me/avatar', function (Request $request) {
@@ -33,12 +33,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         $user = $request->user();
 
-        // apaga avatar antigo se existir
         if ($user->avatar_path && Storage::disk('public')->exists($user->avatar_path)) {
             Storage::disk('public')->delete($user->avatar_path);
         }
 
-        // salva novo avatar em storage/app/public/avatars
         $path = $request->file('avatar')->store('avatars', 'public');
 
         $user->avatar_path = $path;
@@ -49,14 +47,14 @@ Route::middleware('auth:sanctum')->group(function () {
             'avatar_url'=> asset('storage/'.$path),
         ]);
     });
-});
 
-// ---------- REUNIÕES (públicas por enquanto) ----------
-Route::prefix('reunioes')->group(function () {
-    Route::get('/', [ReuniaoController::class, 'index']);          // GET /api/reunioes
-    Route::get('/cards', [ReuniaoController::class, 'cards']);     // GET /api/reunioes/cards
-    Route::post('/', [ReuniaoController::class, 'store']);         // POST /api/reunioes
-    Route::get('/{reuniao}', [ReuniaoController::class, 'show']);  // GET /api/reunioes/{id}
-    Route::put('/{reuniao}', [ReuniaoController::class, 'update']); // PUT /api/reunioes/{id}
-    Route::delete('/{reuniao}', [ReuniaoController::class, 'destroy']); // DELETE /api/reunioes/{id}
+    // ---------- REUNIÕES (agora privadas) ----------
+    Route::prefix('reunioes')->group(function () {
+        Route::get('/', [ReuniaoController::class, 'index']);          
+        Route::get('/cards', [ReuniaoController::class, 'cards']);     
+        Route::post('/', [ReuniaoController::class, 'store']);         
+        Route::get('/{reuniao}', [ReuniaoController::class, 'show']);  
+        Route::put('/{reuniao}', [ReuniaoController::class, 'update']); 
+        Route::delete('/{reuniao}', [ReuniaoController::class, 'destroy']); 
+    });
 });

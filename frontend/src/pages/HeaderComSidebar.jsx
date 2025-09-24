@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+// import { useNavigate, Link, useLocation } from "react-router-dom";
+// import { doLogout } from "../services/Auth"; // <- minúsculo
 import "../style/header-sidebar.css";
 import menuIcon from "../assets/menu-white.svg";
 
@@ -7,9 +9,9 @@ const API = "http://localhost:8000/api";
 
 export default function HeaderComSidebar({ userName: userNameProp }) {
   const [open, setOpen] = useState(false);
-  const [me, setMe] = useState(null);            // 👈 dados do usuário autenticado
-  const [busy, setBusy] = useState(false);       // 👈 estado de upload
-  const fileRef = useRef(null);                  // 👈 input de arquivo
+  const [me, setMe] = useState(null);            // dados do usuário autenticado
+  const [busy, setBusy] = useState(false);       // estado de upload
+  const fileRef = useRef(null);                  // input de arquivo
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,7 +37,6 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
         setMe(data);
-        // opcional: atualizar o nome salvo localmente
         if (data?.name) localStorage.setItem("user_name", data.name);
       })
       .catch(() => {});
@@ -43,11 +44,9 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
 
   const toggle = () => setOpen((v) => !v);
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("user_name");
-    navigate("/login");
+  // usa o helper (faz POST /logout, limpa storage e navega)
+  const handleLogout = () => {
+    doLogout(navigate);
   };
 
   const initials = (userName || "")
@@ -121,7 +120,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         </nav>
 
         <div className="hsd-sidebar__footer">
-          <button className="hsd-logout-btn" onClick={logout}>Sair</button>
+          <Link to="/logout" className="hsd-logout-btn">Sair</Link>
         </div>
       </aside>
 

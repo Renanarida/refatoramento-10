@@ -1,37 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import API from "../../services/api"; // usa o client com interceptor
 
-const API = "http://localhost:8000"; // ajuste se necessário
 const EV_SALVA = "reuniao:salva";
 
 export default function ReunioesTable({
   onNova = () => {},
   onEditar = () => {},
-  refreshTick = 0, // 👈 suporte a tick externo
+  refreshTick = 0,
 }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // filtros simples
+  // filtros
   const [q, setQ] = useState("");
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
 
-  // paginação (usa paginate do Laravel)
+  // paginação
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [total, setTotal] = useState(0);
   const [lastPage, setLastPage] = useState(1);
 
-  // ordenação client-side simples
+  // ordenação client-side
   const [sortKey, setSortKey] = useState("data");
   const [sortDir, setSortDir] = useState("asc");
 
   const fetchData = async () => {
-    setLoading(true); setErr(null);
+    setLoading(true);
+    setErr(null);
     try {
-      const { data } = await axios.get(`${API}/api/reunioes`, {
+      const token = localStorage.getItem("token");
+      const { data } = await API.get("/reunioes", {
         params: {
           q: q || undefined,
           data_ini: dataIni || undefined,
@@ -39,30 +40,30 @@ export default function ReunioesTable({
           page,
           per_page: perPage,
         },
-        headers: { Accept: "application/json" },
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, // FORÇA o header
       });
-      setItens(data.data ?? []);
-      setTotal(data.meta?.total ?? 0);
-      setLastPage(data.meta?.last_page ?? 1);
+
+      const rows = Array.isArray(data) ? data : (data.data ?? []);
+      const lp = data?.meta?.last_page ?? data?.last_page ?? 1;
+      const tt = data?.meta?.total ?? data?.total ?? rows.length ?? 0;
+
+      setItens(rows);
+      setTotal(tt);
+      setLastPage(lp);
     } catch (e) {
-      setErr(e?.response?.data || e.message);
+      setErr(e?.response?.data?.message || e.message || "Erro ao carregar.");
     } finally {
       setLoading(false);
     }
   };
 
-  // carrega em mudanças de filtro/página + quando refreshTick mudar
-  useEffect(() => { fetchData(); }, [q, dataIni, dataFim, page, perPage, refreshTick]);
+  useEffect(() => { fetchData(); /* eslint-disable-next-line */ }, [q, dataIni, dataFim, page, perPage, refreshTick]);
 
-  // ouve o evento global "reuniao:salva" e recarrega
   useEffect(() => {
-    const handler = () => {
-      // opcional: volta pra primeira página ao criar
-      setPage(1);
-      fetchData();
-    };
+    const handler = () => { setPage(1); fetchData(); };
     window.addEventListener(EV_SALVA, handler);
     return () => window.removeEventListener(EV_SALVA, handler);
+    // eslint-disable-next-line
   }, []);
 
   const ordenar = (key) => {
@@ -70,14 +71,12 @@ export default function ReunioesTable({
     else { setSortKey(key); setSortDir("asc"); }
   };
 
-  // compara datas/horas corretamente quando a coluna for "data" ou "hora"
   const itensOrdenados = useMemo(() => {
     const arr = [...itens];
     arr.sort((a, b) => {
       const va = a?.[sortKey];
       const vb = b?.[sortKey];
 
-      // ordenação especial para data/hora
       if (sortKey === "data") {
         const da = va ? new Date(va) : new Date(0);
         const db = vb ? new Date(vb) : new Date(0);
@@ -86,7 +85,6 @@ export default function ReunioesTable({
       if (sortKey === "hora") {
         const toMin = (h) => {
           if (!h) return -1;
-          // espera "HH:MM" ou "HH:MM:SS"
           const [H = "0", M = "0"] = String(h).split(":");
           return parseInt(H, 10) * 60 + parseInt(M, 10);
         };
@@ -95,7 +93,6 @@ export default function ReunioesTable({
         return sortDir === "asc" ? ha - hb : hb - ha;
       }
 
-      // fallback string
       const sva = (va ?? "") + "";
       const svb = (vb ?? "") + "";
       if (sva < svb) return sortDir === "asc" ? -1 : 1;
@@ -108,8 +105,9 @@ export default function ReunioesTable({
   const excluir = async (id) => {
     if (!confirm("Tem certeza que deseja excluir esta reunião?")) return;
     try {
-      await axios.delete(`${API}/api/reunioes/${id}`, {
-        headers: { Accept: "application/json" },
+      const token = localStorage.getItem("token");
+      await API.delete(`/reunioes/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, // FORÇA o header
       });
       fetchData();
     } catch (e) {
@@ -131,12 +129,10 @@ export default function ReunioesTable({
   return (
     <div className="card shadow-sm mt-4">
       <div className="card-header">
-        {/* Linha 1: título CENTRALIZADO */}
         <div className="text-center">
           <strong className="h5 d-block m-0">Reuniões</strong>
         </div>
 
-        {/* Linha 2: filtros + botão cadastrar à direita */}
         <div className="d-flex flex-wrap gap-2 align-items-end mt-3">
           <div className="me-auto" />
           <div>
@@ -222,19 +218,8 @@ export default function ReunioesTable({
                       <td>{r.local || ""}</td>
                       <td className="text-end">
                         <div className="btn-group">
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => onEditar(r)}
-                          >
-                            Editar
-                          </button>
-
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => excluir(r.id)}
-                          >
-                            Excluir
-                          </button>
+                          <button className="btn btn-sm btn-outline-secondary" onClick={() => onEditar(r)}>Editar</button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => excluir(r.id)}>Excluir</button>
                         </div>
                       </td>
                     </tr>
@@ -251,20 +236,8 @@ export default function ReunioesTable({
           {total} registro{total === 1 ? "" : "s"} • Página {page} de {lastPage}
         </small>
         <div className="btn-group">
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            ‹ Anterior
-          </button>
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            disabled={page >= lastPage}
-            onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-          >
-            Próxima ›
-          </button>
+          <button className="btn btn-outline-secondary btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹ Anterior</button>
+          <button className="btn btn-outline-secondary btn-sm" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))}>Próxima ›</button>
         </div>
       </div>
     </div>
