@@ -33,10 +33,8 @@ export default function UserChip() {
       const form = new FormData();
       form.append("avatar", file);
 
-      const resp = await fetch("http://localhost:8000/api/me/avatar", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }, // FormData não usa Content-Type manual
-        body: form,
+      const resp = await API.post("/me/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
 
       if (!resp.ok) throw new Error("Falha no upload");

@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import axios from "axios";
+import API from "../../services/api"; // usa o client axios configurado
 
-const API = "http://localhost:8000"; // ajuste se necessário
+const EV_SALVA = "reuniao:salva";
 
 export default function ModalReuniao({ registro, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
-
   const [form, setForm] = useState({
     titulo: "",
     descricao: "",
@@ -15,6 +14,13 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
     local: "",
     participantes: [],
   });
+  const [errors, setErrors] = useState(null);
+
+  // ---- util ----
+  function normalizarHora(hora) {
+    if (!hora) return "";
+    return hora.slice(0, 5); // garante HH:MM (corta :SS se vier)
+  }
 
   // Pré-preenche quando vier um registro para edição
   useEffect(() => {
@@ -23,7 +29,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         titulo: registro.titulo ?? "",
         descricao: registro.descricao ?? "",
         data: registro.data ?? "",
-        hora: registro.hora ?? "",
+        hora: normalizarHora(registro.hora ?? ""), // <- normaliza aqui também
         local: registro.local ?? "",
         participantes: registro.participantes ?? [],
       });
@@ -37,34 +43,70 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         participantes: [],
       });
     }
+    setErrors(null);
   }, [registro]);
 
   const salvar = async () => {
     try {
       setSaving(true);
-      const payload = { ...form };
+      setErrors(null);
 
-      if (registro?.id) {
-        await axios.put(`${API}/api/reunioes/${registro.id}`, payload, {
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-        });
-      } else {
-        await axios.post(`${API}/api/reunioes`, payload, {
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-        });
+      // Validação rápida no front (evita 422 bobo)
+      if (!form.titulo?.trim()) {
+        setErrors({ titulo: ["O título é obrigatório."] });
+        setSaving(false);
+        return;
+      }
+      if (!form.data) {
+        setErrors({ data: ["A data é obrigatória."] });
+        setSaving(false);
+        return;
       }
 
-      // avisa o pai
+      // Monta payload com hora normalizada
+      const payload = {
+        titulo: form.titulo,
+        descricao: form.descricao || null,
+        data: form.data,                         // YYYY-MM-DD
+        hora: form.hora ? normalizarHora(form.hora) : null, // HH:MM
+        local: form.local || null,
+      };
+
+      // só envia participantes se houver algo
+      if (Array.isArray(form.participantes) && form.participantes.length > 0) {
+        payload.participantes = form.participantes.map((p) => ({
+          nome: p?.nome ?? "",
+          email: p?.email ?? "",
+          papel: p?.papel ?? "",
+        }));
+      }
+
+      if (registro?.id) {
+        // EDITAR
+        await API.put(`/reunioes/${registro.id}`, payload);
+      } else {
+        // CRIAR
+        await API.post(`/reunioes`, payload);
+      }
+
+      // avisa os ouvintes (ex.: tabela) e o pai
+      window.dispatchEvent(new Event(EV_SALVA));
       onSaved && onSaved();
+      onClose && onClose();
     } catch (e) {
-      alert("Erro ao salvar: " + (e?.response?.data?.message || e.message));
+      // 422 de validação
+      const v = e?.response?.status === 422 ? e?.response?.data?.errors : null;
+      if (v) {
+        setErrors(v);
+      } else {
+        alert("Erro ao salvar: " + (e?.response?.data?.message || e.message));
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  // Este modal é controlado pelo pai — se não estiver montado, retorna null.
-  // Se você preferir, pode manter como está: a página pai só renderiza <ModalReuniao /> quando precisa abrir.
+  // Render
   return createPortal(
     <>
       {/* Backdrop */}
@@ -79,15 +121,27 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
             </div>
 
             <div className="modal-body">
+              {/* Erros globais/validação */}
+              {errors && (
+                <div className="alert alert-danger">
+                  <ul className="m-0 ps-3">
+                    {Object.entries(errors).map(([field, msgs]) =>
+                      (msgs || []).map((m, i) => <li key={field + i}>{m}</li>)
+                    )}
+                  </ul>
+                </div>
+              )}
+
               <div className="row g-3">
                 <div className="col-12">
                   <label className="form-label">Título</label>
                   <input
-                    className="form-control"
+                    className={`form-control ${errors?.titulo ? "is-invalid" : ""}`}
                     value={form.titulo}
                     onChange={(e) => setForm({ ...form, titulo: e.target.value })}
                   />
                 </div>
+
                 <div className="col-12">
                   <label className="form-label">Descrição</label>
                   <textarea
@@ -97,24 +151,28 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                     onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                   />
                 </div>
+
                 <div className="col-6">
                   <label className="form-label">Data</label>
                   <input
                     type="date"
-                    className="form-control"
+                    className={`form-control ${errors?.data ? "is-invalid" : ""}`}
                     value={form.data}
                     onChange={(e) => setForm({ ...form, data: e.target.value })}
                   />
                 </div>
+
                 <div className="col-6">
                   <label className="form-label">Hora</label>
                   <input
                     type="time"
+                    step="60"              // <- evita segundos
                     className="form-control"
                     value={form.hora}
-                    onChange={(e) => setForm({ ...form, hora: e.target.value })}
+                    onChange={(e) => setForm({ ...form, hora: normalizarHora(e.target.value) })}
                   />
                 </div>
+
                 <div className="col-12">
                   <label className="form-label">Local</label>
                   <input
@@ -197,7 +255,9 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
+              <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
+                Cancelar
+              </button>
               <button className="btn btn-primary" onClick={salvar} disabled={saving}>
                 {saving ? "Salvando..." : "Salvar"}
               </button>

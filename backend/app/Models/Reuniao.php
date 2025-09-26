@@ -13,8 +13,8 @@ class Reuniao extends Model
     ];
 
     protected $casts = [
-        'data' => 'date',
-        'metadados' => 'array',
+        'data' => 'date:Y-m-d',
+
     ];
 
     public function participantes()

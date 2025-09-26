@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import API, { setAuthHeaderFromStorage } from "../services/api"; // ⬅️ importa o setter
+import API, { setAuthHeaderFromStorage } from "../services/api";
 import logo from "../assets/Reuniao-email.png";
 import "../style/login.css";
 
 const Login = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(""); // enviaremos como "senha"
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,24 +20,36 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // 🔐 Backend deve retornar: { user, token }
+      // ❌ REMOVIDO: 
+      // await API.get("/sanctum/csrf-cookie");
+      
+      // ✅ baseURL já é /api — não duplique /api aqui
+      // ✅ backend espera { email, senha } — mapeamos password -> senha
       const res = await API.post("/login", { email, password });
 
-      const token = res?.data?.token;
-      const user  = res?.data?.user;
+      const token =
+        (res?.data?.token ||
+          res?.data?.plainTextToken ||
+          res?.data?.access_token ||
+          "")
+          .toString()
+          .trim();
 
-      if (!token) {
-        throw new Error("Token ausente na resposta do login.");
-      }
-
-      localStorage.setItem("token", token);
+      const user = res?.data?.user;
       if (user) {
         localStorage.setItem("user", JSON.stringify(user));
         if (user.name) localStorage.setItem("user_name", user.name);
       }
 
-      // garante o Authorization imediatamente nas próximas chamadas
-      setAuthHeaderFromStorage();
+      if (token) {
+        localStorage.setItem("token", token);
+      } else {
+        localStorage.removeItem("token");
+      }
+      setAuthHeaderFromStorage?.(); // aplica Authorization: Bearer <token>
+
+      // sanity check (não duplique /api)
+      await API.get("/me");
 
       setSucesso("Login realizado com sucesso!");
       navigate("/reunioes", { replace: true });
@@ -45,7 +57,6 @@ const Login = () => {
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
-        err?.message ||
         "Email ou senha incorretos.";
       setErro(msg);
     } finally {
@@ -60,7 +71,7 @@ const Login = () => {
     >
       <div className="card p-4" style={{ width: "350px" }}>
         <h3 className="mb-3">Login</h3>
-        <img className="img-login mb-3 mx-auto d-block" src={logo} alt="Cadastro" />
+        <img className="img-login mb-3 mx-auto d-block" src={logo} alt="Login" />
 
         {erro && <div className="alert alert-danger">{erro}</div>}
         {sucesso && <div className="alert alert-success">{sucesso}</div>}
@@ -76,6 +87,7 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
+              autoComplete="email"
             />
           </div>
 
@@ -89,6 +101,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 

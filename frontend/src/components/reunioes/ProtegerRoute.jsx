@@ -17,7 +17,7 @@ export default function ProtegerRoute({ redirectTo = "/login" }) {
     }
 
     // Valida o token no backend
-    API.get("/me")
+    API.get('/me')
       .then(() => setAutenticado(true))
       .catch(() => {
         localStorage.removeItem("token");

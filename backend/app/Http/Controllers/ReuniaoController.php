@@ -7,6 +7,8 @@ use App\Models\Reuniao;
 use App\Models\ReuniaoParticipante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;           // <-- novo
+use Carbon\Carbon;                           // <-- novo
 
 class ReuniaoController extends Controller
 {
@@ -25,32 +27,52 @@ class ReuniaoController extends Controller
             })
             ->orderBy('data')->orderBy('hora');
 
-        // Retorna paginator JSON com data/links/meta (compatível com o teu front)
         return $q->paginate($req->integer('per_page', 10));
     }
 
-    // GET /api/reunioes/cards  -> usado nos CardsReunioes.jsx
-    public function cards()
+    /**
+     * GET /api/reunioes/stats  -> usado pelos cards
+     * Conta total, hoje, amanhã e próximas 48h (considerando data+hora).
+     * Mantém o payload no formato { resumo: { total, hoje, amanha, proximas_48h }, ref: {...} }
+     */
+    public function stats()
     {
+        // timezone consistente com o app
+        $now = now('America/Sao_Paulo');            // Carbon instance
+        $end48 = $now->copy()->addHours(48);
+
         $base = Reuniao::query();
+
         $total = (clone $base)->count();
 
-        $hoje = now()->toDateString();
-        $amanha = now()->addDay()->toDateString();
+        $hojeCount   = (clone $base)->whereDate('data', $now->toDateString())->count();
+        $amanhaCount = (clone $base)->whereDate('data', $now->copy()->addDay()->toDateString())->count();
 
-        $hojeCount = (clone $base)->whereDate('data', $hoje)->count();
-        $amanhaCount = (clone $base)->whereDate('data', $amanha)->count();
-        $proximas48h = (clone $base)->whereBetween('data', [$hoje, now()->addDays(2)->toDateString()])->count();
+        // Próximas 48h considerando data+hora (se 'hora' for null, usa 00:00:00)
+        $prox48hCount = Reuniao::whereBetween(
+            DB::raw("TIMESTAMP(data, COALESCE(hora, '00:00:00'))"),
+            [$now->toDateTimeString(), $end48->toDateTimeString()]
+        )->count();
 
-        // nomes exatamente como o CardsReunioes.jsx espera:
         return response()->json([
             'resumo' => [
-                'total' => $total,
-                'hoje' => $hojeCount,
-                'amanha' => $amanhaCount,
-                'proximas_48h' => $proximas48h,
+                'total'         => $total,
+                'hoje'          => $hojeCount,
+                'amanha'        => $amanhaCount,
+                'proximas_48h'  => $prox48hCount,
+            ],
+            'ref' => [
+                'agora'    => $now->toDateTimeString(),
+                'ate_48h'  => $end48->toDateTimeString(),
+                'tz'       => 'America/Sao_Paulo',
             ],
         ]);
+    }
+
+    // Compat: se seu front estiver chamando /reunioes/cards
+    public function cards()
+    {
+        return $this->stats();
     }
 
     // POST /api/reunioes
@@ -73,10 +95,10 @@ class ReuniaoController extends Controller
         $userId = \App\Models\User::value('id');
 
         $reuniao = Reuniao::create([
-            'user_id' => $userId, // agora tem certeza que existe
+            'user_id' => $userId,
             'titulo' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
-            'data' => substr($data['data'], 0, 10), // garante formato DATE
+            'data' => substr($data['data'], 0, 10),
             'hora' => $data['hora'],
             'local' => $data['local'] ?? null,
             'metadados' => $data['metadados'] ?? null,
@@ -118,7 +140,6 @@ class ReuniaoController extends Controller
 
         $reuniao->fill($data)->save();
 
-        // Se vier 'participantes' no update, substitui os existentes (simples e direto)
         if (array_key_exists('participantes', $data)) {
             $reuniao->participantes()->delete();
             foreach ($data['participantes'] ?? [] as $p) {

@@ -3,30 +3,55 @@ import { useEffect, useState } from "react";
 import API from "../../services/api";
 
 export default function CardsReunioes() {
-  const [resumo, setResumo] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({ total: 0, hoje: 0, amanha: 0, prox_48h: 0 });
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
   useEffect(() => {
+    let alive = true;
+
     (async () => {
       setLoading(true);
       setErr(null);
-      try {
-        const token = localStorage.getItem("token");
-        const { data } = await API.get("/reunioes/cards", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}, // força o Bearer
-        });
-        setResumo(data);
-      } catch (e) {
-        const msg =
-          e?.response?.status === 401
-            ? "Sua sessão expirou. Faça login novamente."
-            : e?.response?.data?.message || e.message || "Erro ao carregar.";
-        setErr(msg);
-      } finally {
-        setLoading(false);
+
+      // tenta /reunioes/stats e cai para /reunioes/cards se precisar
+      const endpoints = ["/reunioes/stats", "/reunioes/cards"];
+
+      for (const ep of endpoints) {
+        try {
+          const { data } = await API.get(ep);
+
+          // payload pode vir como {resumo:{...}} ou direto {...}
+          const payload = data?.resumo ?? data ?? {};
+          const prox48 = payload.prox_48h ?? payload.proximas_48h ?? 0;
+
+          if (!alive) return;
+          setStats({
+            total: Number(payload.total ?? 0),
+            hoje: Number(payload.hoje ?? 0),
+            amanha: Number(payload.amanha ?? 0),
+            prox_48h: Number(prox48),
+          });
+          setLoading(false);
+          return; // sucesso, sai do laço
+        } catch (e) {
+          // se falhar neste endpoint, tenta o próximo
+          if (ep === endpoints[endpoints.length - 1]) {
+            const msg =
+              e?.response?.status === 401
+                ? "Sua sessão expirou. Faça login novamente."
+                : e?.response?.data?.message || e.message || "Erro ao carregar.";
+            if (!alive) return;
+            setErr(msg);
+            setLoading(false);
+          }
+        }
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const Cell = ({ label, value }) => (
@@ -45,10 +70,10 @@ export default function CardsReunioes() {
       {err && <div className="alert alert-danger mb-3">{err}</div>}
 
       <div className="row g-3">
-        <Cell label="Total" value={resumo?.total} />
-        <Cell label="Hoje" value={resumo?.hoje} />
-        <Cell label="Amanhã" value={resumo?.amanha} />
-        <Cell label="Próx. 48h" value={resumo?.proximas_48h} />
+        <Cell label="Total" value={stats.total} />
+        <Cell label="Hoje" value={stats.hoje} />
+        <Cell label="Amanhã" value={stats.amanha} />
+        <Cell label="Próx. 48h" value={stats.prox_48h} />
       </div>
     </>
   );

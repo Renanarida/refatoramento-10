@@ -31,7 +31,6 @@ export default function ReunioesTable({
     setLoading(true);
     setErr(null);
     try {
-      const token = localStorage.getItem("token");
       const { data } = await API.get("/reunioes", {
         params: {
           q: q || undefined,
@@ -40,7 +39,6 @@ export default function ReunioesTable({
           page,
           per_page: perPage,
         },
-        headers: token ? { Authorization: `Bearer ${token}` } : {}, // FORÇA o header
       });
 
       const rows = Array.isArray(data) ? data : (data.data ?? []);
@@ -105,10 +103,7 @@ export default function ReunioesTable({
   const excluir = async (id) => {
     if (!confirm("Tem certeza que deseja excluir esta reunião?")) return;
     try {
-      const token = localStorage.getItem("token");
-      await API.delete(`/reunioes/${id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}, // FORÇA o header
-      });
+      await API.delete(`/reunioes/${id}`);
       fetchData();
     } catch (e) {
       alert("Erro ao excluir: " + (e?.response?.data?.message || e.message));

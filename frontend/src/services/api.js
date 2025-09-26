@@ -2,45 +2,42 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: "http://localhost:8000/api", // backend Laravel
+  withCredentials: true,            // necessário para Sanctum (cookies/CSRF)
+  headers: {
+    Accept: "application/json",
+  },
 });
 
-// seta/remover o Authorization default a partir do localStorage
+// token (se usar Bearer)
+API.interceptors.request.use((cfg) => {
+  const token = localStorage.getItem("token");
+  if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  return cfg;
+});
+
+// Define/atualiza o header Authorization a partir do localStorage (quando houver)
 export function setAuthHeaderFromStorage() {
+  if (typeof window === "undefined") return; // evita erro no build/SSR
+
   const token = localStorage.getItem("token");
   if (token) {
-    API.defaults.headers.common.Authorization = `Bearer ${token}`;
+    API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   } else {
-    delete API.defaults.headers.common.Authorization;
+    delete API.defaults.headers.common["Authorization"];
   }
 }
 
-// já tenta configurar no boot
-setAuthHeaderFromStorage();
-
-// Interceptor: garante Authorization se não estiver no config
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+// Se quiser setar manualmente (ex.: depois do login)
+export function setAuthToken(token) {
   if (token) {
-    config.headers = config.headers ?? {};
-    if (!config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete API.defaults.headers.common["Authorization"];
   }
+}
 
-  // DEBUG: loga se o header está presente nas rotas críticas
-  const u = config.url || "";
-  if (u.startsWith("/reunioes") || u === "/me") {
-    // eslint-disable-next-line no-console
-    console.debug(
-      "[API]",
-      (config.method || "GET").toUpperCase(),
-      `${config.baseURL}${u}`,
-      "Authorization?",
-      !!config.headers.Authorization
-    );
-  }
-  return config;
-});
+// Já aplica ao carregar
+setAuthHeaderFromStorage();
 
 export default API;

@@ -39,7 +39,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         setMe(data);
         if (data?.name) localStorage.setItem("user_name", data.name);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const toggle = () => setOpen((v) => !v);
@@ -120,7 +120,9 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         </nav>
 
         <div className="hsd-sidebar__footer">
-          <Link to="/logout" className="hsd-logout-btn">Sair</Link>
+          <Link to="/logout" className="hsd-logout-btn btn btn-danger w-100 d-block">
+            Sair
+          </Link>
         </div>
       </aside>
 

@@ -50,11 +50,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ---------- REUNIÕES (agora privadas) ----------
     Route::prefix('reunioes')->group(function () {
-        Route::get('/', [ReuniaoController::class, 'index']);          
-        Route::get('/cards', [ReuniaoController::class, 'cards']);     
-        Route::post('/', [ReuniaoController::class, 'store']);         
-        Route::get('/{reuniao}', [ReuniaoController::class, 'show']);  
-        Route::put('/{reuniao}', [ReuniaoController::class, 'update']); 
-        Route::delete('/{reuniao}', [ReuniaoController::class, 'destroy']); 
+        Route::get('/', [ReuniaoController::class, 'index']);        // /api/reunioes
+        Route::get('/stats', [ReuniaoController::class, 'stats']);   // /api/reunioes/stats
+        Route::get('/cards', [ReuniaoController::class, 'cards']);   // /api/reunioes/cards
+        Route::post('/', [ReuniaoController::class, 'store']);       // /api/reunioes
+        Route::get('/{reuniao}', [ReuniaoController::class, 'show']); 
+        Route::put('/{reuniao}', [ReuniaoController::class, 'update']);
+        Route::delete('/{reuniao}', [ReuniaoController::class, 'destroy']);
     });
 });
