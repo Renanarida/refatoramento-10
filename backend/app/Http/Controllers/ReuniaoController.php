@@ -7,8 +7,8 @@ use App\Models\Reuniao;
 use App\Models\ReuniaoParticipante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;           // <-- novo
-use Carbon\Carbon;                           // <-- novo
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class ReuniaoController extends Controller
 {
@@ -32,23 +32,18 @@ class ReuniaoController extends Controller
 
     /**
      * GET /api/reunioes/stats  -> usado pelos cards
-     * Conta total, hoje, amanhã e próximas 48h (considerando data+hora).
-     * Mantém o payload no formato { resumo: { total, hoje, amanha, proximas_48h }, ref: {...} }
      */
     public function stats()
     {
-        // timezone consistente com o app
-        $now = now('America/Sao_Paulo');            // Carbon instance
+        $now = now('America/Sao_Paulo');
         $end48 = $now->copy()->addHours(48);
 
         $base = Reuniao::query();
 
         $total = (clone $base)->count();
-
         $hojeCount   = (clone $base)->whereDate('data', $now->toDateString())->count();
         $amanhaCount = (clone $base)->whereDate('data', $now->copy()->addDay()->toDateString())->count();
 
-        // Próximas 48h considerando data+hora (se 'hora' for null, usa 00:00:00)
         $prox48hCount = Reuniao::whereBetween(
             DB::raw("TIMESTAMP(data, COALESCE(hora, '00:00:00'))"),
             [$now->toDateTimeString(), $end48->toDateTimeString()]
@@ -69,7 +64,6 @@ class ReuniaoController extends Controller
         ]);
     }
 
-    // Compat: se seu front estiver chamando /reunioes/cards
     public function cards()
     {
         return $this->stats();
@@ -91,7 +85,6 @@ class ReuniaoController extends Controller
             'participantes.*.papel' => 'nullable|string|max:100',
         ]);
 
-        // pega o primeiro usuário da tabela users (pra não quebrar a FK)
         $userId = \App\Models\User::value('id');
 
         $reuniao = Reuniao::create([
@@ -160,5 +153,70 @@ class ReuniaoController extends Controller
     {
         $reuniao->delete();
         return response()->json(['status' => 'ok']);
+    }
+
+    // ===================== NOVOS MÉTODOS =====================
+
+    // GET /api/public/reunioes
+    public function publicIndex(Request $req)
+    {
+        return Reuniao::query()
+            ->select('id', 'titulo', 'data', 'hora', 'local')
+            ->orderBy('data', 'desc')
+            ->paginate($req->integer('per_page', 10));
+    }
+
+    // GET /api/participante/reunioes
+    public function participantIndex(Request $req)
+    {
+        $cpf = $req->attributes->get('cpf_participante');
+        if (!$cpf) {
+            return response()->json(['message' => 'CPF obrigatório'], 400);
+        }
+
+        $cpfDigits = preg_replace('/\D+/', '', $cpf);
+
+        return Reuniao::query()
+            ->select(
+                'reunioes.id',
+                'reunioes.titulo',
+                'reunioes.data',
+                'reunioes.hora',
+                'reunioes.local',
+                'reunioes.descricao'
+            )
+            ->join('reuniao_participantes as rp', 'rp.reuniao_id', '=', 'reunioes.id')
+            ->whereRaw('REPLACE(REPLACE(REPLACE(rp.cpf,".",""),"-","")," ","") = ?', [$cpfDigits])
+            ->orderBy('reunioes.data', 'desc')
+            ->paginate($req->integer('per_page', 10));
+    }
+
+    // GET /api/participante/reunioes/{id}
+    public function participantShow(Request $req, $id)
+    {
+        $cpf = $req->attributes->get('cpf_participante');
+        if (!$cpf) {
+            return response()->json(['message' => 'CPF obrigatório'], 400);
+        }
+
+        $cpfDigits = preg_replace('/\D+/', '', $cpf);
+
+        $reuniao = Reuniao::query()
+            ->with(['participantes' => function ($q) {
+                $q->select('id', 'reuniao_id', 'nome', 'email', 'papel'); // não expõe CPF
+            }])
+            ->where('reunioes.id', $id)
+            ->whereExists(function ($q) use ($cpfDigits) {
+                $q->from('reuniao_participantes as rp')
+                  ->whereColumn('rp.reuniao_id', 'reunioes.id')
+                  ->whereRaw('REPLACE(REPLACE(REPLACE(rp.cpf,".",""),"-","")," ","") = ?', [$cpfDigits]);
+            })
+            ->first();
+
+        if (!$reuniao) {
+            return response()->json(['message' => 'Não autorizado ou não encontrado'], 404);
+        }
+
+        return $reuniao;
     }
 }

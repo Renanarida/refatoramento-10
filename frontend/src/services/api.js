@@ -40,4 +40,8 @@ export function setAuthToken(token) {
 // Já aplica ao carregar
 setAuthHeaderFromStorage();
 
+//novas funções paara cpf
+const cpf = localStorage.getItem('cpf');
+if (cpf) API.defaults.headers['X-CPF'] = cpf;
+
 export default API;

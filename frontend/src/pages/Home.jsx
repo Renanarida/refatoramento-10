@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../style/home.css";
+import { useAuth } from "../services/useAuth"; // ✅ usar o hook
 
 // ✅ Imagens
 import partnersIcon from "../assets/partners.png";
@@ -9,33 +10,21 @@ import sendIcon from "../assets/send.png";
 
 const Home = () => {
   const navigate = useNavigate();
+  const { asVisitor, asParticipant } = useAuth(); // ✅ funções do seu useAuth
+  const [cpfInput, setCpfInput] = useState("");
 
-  const handleVisitante = async () => {
-    try {
-      const res = await fetch("http://localhost:8000/api/visitante", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (!res.ok) throw new Error("Erro ao entrar como visitante");
-      navigate("/dashboard-visitante");
-    } catch (error) {
-      alert(error.message);
-    }
+  const handleVisitante = () => {
+    asVisitor();                 // seta mode="visitor"
+    navigate("/dashboard-visitante");
   };
 
-  const handleParticipante = async () => {
-    try {
-      const res = await fetch("http://localhost:8000/api/participante_sem_login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (!res.ok) throw new Error("Erro ao entrar como participante");
-      navigate("/dashboard-participante");
-    } catch (error) {
-      alert(error.message);
+  const handleParticipante = () => {
+    if (!cpfInput) {
+      alert("Digite o CPF para continuar");
+      return;
     }
+    asParticipant(cpfInput);     // seta mode="participant" e salva no localStorage
+    navigate("/dashboard-participante");
   };
 
   return (
@@ -67,7 +56,18 @@ const Home = () => {
         <Link to="/cadastrar" className="btn btn-primary">Cadastre-se</Link>
         <Link to="/login" className="btn btn-secondary">Login</Link>
         <button onClick={handleVisitante} className="btn btn-success">Entrar como visitante</button>
-        <button onClick={handleParticipante} className="btn btn-info">Participante</button>
+
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="Digite seu CPF"
+            className="form-control"
+            value={cpfInput}
+            onChange={(e) => setCpfInput(e.target.value)}
+            style={{ maxWidth: "200px" }}
+          />
+          <button onClick={handleParticipante} className="btn btn-info">Participante</button>
+        </div>
       </div>
     </div>
   );

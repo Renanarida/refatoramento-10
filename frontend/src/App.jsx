@@ -7,6 +7,10 @@ import Login from "./pages/Login";
 import ReunioesPage from "./pages/ReunioesPage";
 import Logout from "./pages/Logout";
 
+// ✅ novas páginas
+import DashboardVisitante from "./pages/DashboardVisitante";
+import DashboardParticipante from "./pages/DashboardParticipante";
+
 function App() {
   return (
     <Routes>
@@ -15,11 +19,20 @@ function App() {
       <Route path="/cadastrar" element={<Cadastrar />} />
       <Route path="/login" element={<Login />} />
 
-      {/* privadas */}
-      <Route element={<ProtegerRoute />}>
+      {/* visitante */}
+      <Route element={<ProtegerRoute allow={["visitor"]} redirectTo="/" />}>
+        <Route path="/dashboard-visitante" element={<DashboardVisitante />} />
+      </Route>
+
+      {/* participante */}
+      <Route element={<ProtegerRoute allow={["participant"]} redirectTo="/entrar-participante" />}>
+        <Route path="/dashboard-participante" element={<DashboardParticipante />} />
+      </Route>
+
+      {/* privadas (user/admin) */}
+      <Route element={<ProtegerRoute allow={["user","admin"]} />}>
         <Route path="/reunioes" element={<ReunioesPage />} />
         <Route path="/logout" element={<Logout />} />
-        {/* coloque outras rotas privadas aqui, se quiser */}
       </Route>
 
       {/* fallback */}

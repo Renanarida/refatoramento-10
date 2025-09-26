@@ -19,6 +19,16 @@ use App\Http\Controllers\ReuniaoController;
 Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store'); // cadastro
 Route::post('/login', [AuthController::class, 'login']);                               // login
 
+// ---------- PÚBLICO & PARTICIPANTE (sem login) ----------
+Route::middleware('cpf.participant')->group(function () {
+    // Visitante: lista pública (campos limitados)
+    Route::get('/public/reunioes', [ReuniaoController::class, 'publicIndex']);
+
+    // Participante via CPF (header X-CPF ou query ?cpf=)
+    Route::get('/participante/reunioes', [ReuniaoController::class, 'participantIndex']);
+    Route::get('/participante/reunioes/{id}', [ReuniaoController::class, 'participantShow']);
+});
+
 // ---------- ROTAS PROTEGIDAS (require auth:sanctum) ----------
 Route::middleware('auth:sanctum')->group(function () {
     // sessão
@@ -48,14 +58,19 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
     });
 
-    // ---------- REUNIÕES (agora privadas) ----------
+    // ---------- REUNIÕES ----------
     Route::prefix('reunioes')->group(function () {
+        // Leitura (user/admin) — mantive igual
         Route::get('/', [ReuniaoController::class, 'index']);        // /api/reunioes
         Route::get('/stats', [ReuniaoController::class, 'stats']);   // /api/reunioes/stats
         Route::get('/cards', [ReuniaoController::class, 'cards']);   // /api/reunioes/cards
-        Route::post('/', [ReuniaoController::class, 'store']);       // /api/reunioes
         Route::get('/{reuniao}', [ReuniaoController::class, 'show']); 
-        Route::put('/{reuniao}', [ReuniaoController::class, 'update']);
-        Route::delete('/{reuniao}', [ReuniaoController::class, 'destroy']);
+
+        // Escrita restrita a ADMIN
+        Route::middleware('role:admin')->group(function () {
+            Route::post('/', [ReuniaoController::class, 'store']);       // /api/reunioes
+            Route::put('/{reuniao}', [ReuniaoController::class, 'update']);
+            Route::delete('/{reuniao}', [ReuniaoController::class, 'destroy']);
+        });
     });
 });
