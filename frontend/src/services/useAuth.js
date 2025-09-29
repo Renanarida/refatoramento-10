@@ -1,5 +1,5 @@
 // src/services/useAuth.js
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import API from "./api";
 
 const AuthCtx = createContext(null);
@@ -20,10 +20,14 @@ export function AuthProvider({ children }) {
 
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+
     if (token && user && user.role) {
       setMode(user.role === "admin" ? "admin" : "user");
-    } else if (token) {
-      // se não tiver role no localStorage, tenta o /me pra descobrir
+      return;
+    }
+
+    if (token) {
+      // tenta descobrir role via /me
       API.get("/me")
         .then((res) => {
           const role = res?.data?.role === "admin" ? "admin" : "user";
@@ -54,15 +58,18 @@ export function AuthProvider({ children }) {
   function asUser(user) {
     const role = user?.role === "admin" ? "admin" : "user";
     setMode(role);
+    // mantém storage do user/token feito no Login.jsx
     delete API.defaults.headers["X-CPF"];
   }
 
+  const value = useMemo(() => {
+    const isAdmin = mode === "admin";
+    const isAuthenticated = mode === "user" || mode === "admin";
+    return { mode, isAdmin, isAuthenticated, cpf, asVisitor, asParticipant, asUser };
+  }, [mode, cpf]);
+
   // *** sem JSX para evitar erro de parser no build ***
-  return React.createElement(
-    AuthCtx.Provider,
-    { value: { mode, cpf, asVisitor, asParticipant, asUser } },
-    children
-  );
+  return React.createElement(AuthCtx.Provider, { value }, children);
 }
 
 export const useAuth = () => useContext(AuthCtx);

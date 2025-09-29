@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import API from "../../services/api"; // usa o client axios configurado
+import { useAuth } from "../../services/useAuth"; // 👈 pega isAdmin
 
 const EV_SALVA = "reuniao:salva";
 
 export default function ModalReuniao({ registro, onClose, onSaved }) {
+  const { isAdmin } = useAuth();              // 👈 define permissões
+  const isEditing = !!registro?.id;           // 👈 modo edição?
+
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     titulo: "",
@@ -29,7 +33,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         titulo: registro.titulo ?? "",
         descricao: registro.descricao ?? "",
         data: registro.data ?? "",
-        hora: normalizarHora(registro.hora ?? ""), // <- normaliza aqui também
+        hora: normalizarHora(registro.hora ?? ""), // <- normaliza também
         local: registro.local ?? "",
         participantes: registro.participantes ?? [],
       });
@@ -47,6 +51,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
   }, [registro]);
 
   const salvar = async () => {
+    if (!isAdmin) return; // 👈 trava ação para não-admin
     try {
       setSaving(true);
       setErrors(null);
@@ -81,26 +86,36 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         }));
       }
 
-      if (registro?.id) {
-        // EDITAR
+      if (isEditing) {
         await API.put(`/reunioes/${registro.id}`, payload);
       } else {
-        // CRIAR
         await API.post(`/reunioes`, payload);
       }
 
-      // avisa os ouvintes (ex.: tabela) e o pai
       window.dispatchEvent(new Event(EV_SALVA));
       onSaved && onSaved();
       onClose && onClose();
     } catch (e) {
-      // 422 de validação
       const v = e?.response?.status === 422 ? e?.response?.data?.errors : null;
-      if (v) {
-        setErrors(v);
-      } else {
-        alert("Erro ao salvar: " + (e?.response?.data?.message || e.message));
-      }
+      if (v) setErrors(v);
+      else alert("Erro ao salvar: " + (e?.response?.data?.message || e.message));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const excluir = async () => {
+    if (!isAdmin || !isEditing) return; // 👈 trava ação
+    if (!confirm("Tem certeza que deseja excluir esta reunião?")) return;
+    try {
+      setSaving(true);
+      setErrors(null);
+      await API.delete(`/reunioes/${registro.id}`);
+      window.dispatchEvent(new Event(EV_SALVA));
+      onSaved && onSaved();
+      onClose && onClose();
+    } catch (e) {
+      alert("Erro ao excluir: " + (e?.response?.data?.message || e.message));
     } finally {
       setSaving(false);
     }
@@ -116,7 +131,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         <div className="modal-dialog modal-lg">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">{registro?.id ? "Editar Reunião" : "Nova Reunião"}</h5>
+              <h5 className="modal-title">{isEditing ? "Editar Reunião" : "Nova Reunião"}</h5>
               <button className="btn-close" onClick={onClose} />
             </div>
 
@@ -139,6 +154,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                     className={`form-control ${errors?.titulo ? "is-invalid" : ""}`}
                     value={form.titulo}
                     onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                    disabled={!isAdmin} // 👈 somente admin edita
                   />
                 </div>
 
@@ -149,6 +165,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                     rows={3}
                     value={form.descricao}
                     onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -159,6 +176,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                     className={`form-control ${errors?.data ? "is-invalid" : ""}`}
                     value={form.data}
                     onChange={(e) => setForm({ ...form, data: e.target.value })}
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -170,6 +188,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                     className="form-control"
                     value={form.hora}
                     onChange={(e) => setForm({ ...form, hora: normalizarHora(e.target.value) })}
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -179,6 +198,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                     className="form-control"
                     value={form.local}
                     onChange={(e) => setForm({ ...form, local: e.target.value })}
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -186,14 +206,18 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                 <div className="col-12">
                   <div className="d-flex justify-content-between align-items-center">
                     <label className="form-label m-0">Participantes</label>
-                    <button
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={() =>
-                        setForm((f) => ({ ...f, participantes: [...(f.participantes || []), {}] }))
-                      }
-                    >
-                      Adicionar
-                    </button>
+
+                    {/* Botão de adicionar só para admin */}
+                    {isAdmin && (
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() =>
+                          setForm((f) => ({ ...f, participantes: [...(f.participantes || []), {}] }))
+                        }
+                      >
+                        Adicionar
+                      </button>
+                    )}
                   </div>
 
                   <div className="mt-2">
@@ -209,6 +233,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                               arr[i] = { ...arr[i], nome: e.target.value };
                               setForm({ ...form, participantes: arr });
                             }}
+                            disabled={!isAdmin}
                           />
                         </div>
                         <div className="col-md-4">
@@ -221,6 +246,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                               arr[i] = { ...arr[i], email: e.target.value };
                               setForm({ ...form, participantes: arr });
                             }}
+                            disabled={!isAdmin}
                           />
                         </div>
                         <div className="col-md-3">
@@ -233,19 +259,22 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                               arr[i] = { ...arr[i], papel: e.target.value };
                               setForm({ ...form, participantes: arr });
                             }}
+                            disabled={!isAdmin}
                           />
                         </div>
                         <div className="col-md-1 text-end">
-                          <button
-                            className="btn btn-outline-danger btn-sm"
-                            onClick={() => {
-                              const arr = [...(form.participantes || [])];
-                              arr.splice(i, 1);
-                              setForm({ ...form, participantes: arr });
-                            }}
-                          >
-                            &times;
-                          </button>
+                          {isAdmin && (
+                            <button
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => {
+                                const arr = [...(form.participantes || [])];
+                                arr.splice(i, 1);
+                                setForm({ ...form, participantes: arr });
+                              }}
+                            >
+                              &times;
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -255,12 +284,39 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
-                Cancelar
-              </button>
-              <button className="btn btn-primary" onClick={salvar} disabled={saving}>
-                {saving ? "Salvando..." : "Salvar"}
-              </button>
+              {/* Não-admin: só fecha */}
+              {!isAdmin && (
+                <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
+                  Fechar
+                </button>
+              )}
+
+              {/* Admin + Novo: Adicionar e Cancelar */}
+              {isAdmin && !isEditing && (
+                <>
+                  <button className="btn btn-primary" onClick={salvar} disabled={saving}>
+                    {saving ? "Salvando..." : "Adicionar"}
+                  </button>
+                  <button className="btn btn-outline-secondary" onClick={onClose} disabled={saving}>
+                    Cancelar
+                  </button>
+                </>
+              )}
+
+              {/* Admin + Edição: Salvar, Excluir e Cancelar */}
+              {isAdmin && isEditing && (
+                <>
+                  <button className="btn btn-primary" onClick={salvar} disabled={saving}>
+                    {saving ? "Salvando..." : "Salvar alterações"}
+                  </button>
+                  <button className="btn btn-danger" onClick={excluir} disabled={saving}>
+                    {saving ? "Excluindo..." : "Excluir"}
+                  </button>
+                  <button className="btn btn-outline-secondary" onClick={onClose} disabled={saving}>
+                    Cancelar
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -1,17 +1,19 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import API, { setAuthHeaderFromStorage } from "../services/api";
+import { useAuth } from "../services/useAuth";    
 import logo from "../assets/Reuniao-email.png";
 import "../style/login.css";
 
 const Login = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); // enviaremos como "senha"
+  const [password, setPassword] = useState(""); // campo padrão "password"
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { asUser } = useAuth();           
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,36 +22,36 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // ❌ REMOVIDO: 
-      // await API.get("/sanctum/csrf-cookie");
-      
-      // ✅ baseURL já é /api — não duplique /api aqui
-      // ✅ backend espera { email, senha } — mapeamos password -> senha
+      // Envia apenas { email, password }
       const res = await API.post("/login", { email, password });
 
-      const token =
-        (res?.data?.token ||
-          res?.data?.plainTextToken ||
-          res?.data?.access_token ||
-          "")
-          .toString()
-          .trim();
-
-      const user = res?.data?.user;
-      if (user) {
-        localStorage.setItem("user", JSON.stringify(user));
-        if (user.name) localStorage.setItem("user_name", user.name);
-      }
+      // token (aceita vários formatos)
+      const token = (
+        res?.data?.token ||
+        res?.data?.plainTextToken ||
+        res?.data?.access_token ||
+        ""
+      ).toString().trim();
 
       if (token) {
         localStorage.setItem("token", token);
+        setAuthHeaderFromStorage?.();
       } else {
         localStorage.removeItem("token");
       }
-      setAuthHeaderFromStorage?.(); // aplica Authorization: Bearer <token>
 
-      // sanity check (não duplique /api)
-      await API.get("/me");
+      // pega o usuário: prioriza resposta do login; se não tiver role, busca /me
+      let user = res?.data?.user;
+      if (!user?.role) {
+        const me = await API.get("/me"); // backend deve retornar { id, name, email, role, ... }
+        user = me?.data || user;
+      }
+
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+        if (user.name) localStorage.setItem("user_name", user.name);
+        asUser(user);            
+      }
 
       setSucesso("Login realizado com sucesso!");
       navigate("/reunioes", { replace: true });
