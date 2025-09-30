@@ -1,72 +1,187 @@
 // src/services/useAuth.js
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import API from "./api";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import API, {
+  ensureCsrf,
+  setAuthHeaderFromStorage,
+  setAuthToken,
+  clearAuth,
+  setCpfHeader,
+  clearCpfHeader,
+} from "./api";
 
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [mode, setMode] = useState("visitor"); // 'visitor' | 'participant' | 'user' | 'admin'
+  // 'visitor' | 'participant' | 'user' | 'admin'
+  const [mode, setMode] = useState("visitor");
   const [cpf, setCpf] = useState("");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // hidrata do localStorage
+  // --- utils ---
+  const safeParse = (s) => {
+    try {
+      return JSON.parse(s || "null");
+    } catch {
+      return null;
+    }
+  };
+
+  // Hidrata no load e confirma no /me
   useEffect(() => {
+    setAuthHeaderFromStorage(); // garante Bearer após F5
+
+    // Participante (X-CPF)
     const savedCpf = (localStorage.getItem("cpf") || "").replace(/\D+/g, "");
     if (savedCpf) {
       setMode("participant");
       setCpf(savedCpf);
-      API.defaults.headers["X-CPF"] = savedCpf;
-      return;
+      setCpfHeader(savedCpf);
+    } else {
+      clearCpfHeader();
     }
 
     const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const savedUser = safeParse(localStorage.getItem("user"));
 
-    if (token && user && user.role) {
-      setMode(user.role === "admin" ? "admin" : "user");
+    if (!token) {
+      // sem token => visitante (ou participante se tiver CPF)
+      setUser(null);
+      setLoading(false);
       return;
     }
 
-    if (token) {
-      // tenta descobrir role via /me
+    // Se já temos user no storage, usa já para evitar flicker,
+    // e em seguida confirma no /me.
+    if (savedUser && (savedUser.role || savedUser.is_admin !== undefined)) {
+      const role =
+        savedUser.role || (savedUser.is_admin ? "admin" : "user");
+      setUser(savedUser);
+      setMode(role === "admin" ? "admin" : "user");
+      // confirma /me
       API.get("/me")
         .then((res) => {
-          const role = res?.data?.role === "admin" ? "admin" : "user";
-          setMode(role);
-          localStorage.setItem("user", JSON.stringify({ ...(res?.data || {}), role }));
+          const role2 =
+            res?.data?.role || (res?.data?.is_admin ? "admin" : "user");
+          const u = { ...(res?.data || {}), role: role2 };
+          setUser(u);
+          localStorage.setItem("user", JSON.stringify(u));
+          setMode(role2 === "admin" ? "admin" : "user");
         })
-        .catch(() => setMode("visitor"));
+        .catch(() => {
+          // token inválido
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setUser(null);
+          setMode(savedCpf ? "participant" : "visitor");
+        })
+        .finally(() => setLoading(false));
     } else {
-      setMode("visitor");
+      // Não temos user salvo — busca /me direto
+      API.get("/me")
+        .then((res) => {
+          const role =
+            res?.data?.role || (res?.data?.is_admin ? "admin" : "user");
+          const u = { ...(res?.data || {}), role };
+          setUser(u);
+          localStorage.setItem("user", JSON.stringify(u));
+          setMode(role === "admin" ? "admin" : "user");
+        })
+        .catch(() => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setUser(null);
+          setMode(savedCpf ? "participant" : "visitor");
+        })
+        .finally(() => setLoading(false));
     }
   }, []);
 
+  // Trocar para visitante
   function asVisitor() {
     setMode("visitor");
     setCpf("");
-    localStorage.removeItem("cpf");
-    delete API.defaults.headers["X-CPF"];
+    clearCpfHeader();
   }
 
+  // Entrar como participante (salva X-CPF)
   function asParticipant(cpfRaw) {
     const clean = String(cpfRaw || "").replace(/\D+/g, "");
     setMode("participant");
     setCpf(clean);
-    localStorage.setItem("cpf", clean);
-    API.defaults.headers["X-CPF"] = clean;
+    setCpfHeader(clean);
   }
 
-  function asUser(user) {
-    const role = user?.role === "admin" ? "admin" : "user";
+  // Setar user manualmente (ex.: após /me externo)
+  function asUser(newUser) {
+    const role = newUser?.role === "admin" ? "admin" : "user";
+    setUser(newUser || null);
+    localStorage.setItem("user", JSON.stringify(newUser || {}));
     setMode(role);
-    // mantém storage do user/token feito no Login.jsx
-    delete API.defaults.headers["X-CPF"];
+    // participante sai de cena quando entra user/admin
+    setCpf("");
+    clearCpfHeader();
+  }
+
+  // Fluxo de login completo
+  async function login(email, password) {
+    await ensureCsrf(); // Sanctum
+    const res = await API.post("/login", { email, senha: password });
+    const token =
+      res?.data?.token || res?.data?.access_token || res?.data?.data?.token;
+    if (token) setAuthToken(token);
+
+    const me = await API.get("/me");
+    const role = me?.data?.role || (me?.data?.is_admin ? "admin" : "user");
+    const u = { ...(me?.data || {}), role };
+    setUser(u);
+    localStorage.setItem("user", JSON.stringify(u));
+    setMode(role === "admin" ? "admin" : "user");
+
+    // se estava como participante, limpa X-CPF
+    setCpf("");
+    clearCpfHeader();
+
+    return u;
+  }
+
+  // Logout geral
+  async function logout() {
+    try {
+      await API.post("/logout");
+    } catch {}
+    clearAuth();
+    clearCpfHeader();
+    localStorage.removeItem("user");
+    setUser(null);
+    setMode("visitor");
+    setCpf("");
   }
 
   const value = useMemo(() => {
     const isAdmin = mode === "admin";
     const isAuthenticated = mode === "user" || mode === "admin";
-    return { mode, isAdmin, isAuthenticated, cpf, asVisitor, asParticipant, asUser };
-  }, [mode, cpf]);
+    return {
+      mode,
+      isAdmin,
+      isAuthenticated,
+      loading,
+      user,
+      cpf,
+      // actions
+      login,
+      logout,
+      asVisitor,
+      asParticipant,
+      asUser,
+    };
+  }, [mode, loading, user, cpf]);
 
   // *** sem JSX para evitar erro de parser no build ***
   return React.createElement(AuthCtx.Provider, { value }, children);

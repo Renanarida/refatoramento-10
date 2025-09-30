@@ -147,6 +147,11 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
     }
   };
 
+  //Precisa testar ainda
+  // const { isAdmin, loading } = useAuth();
+
+  // <button disabled={loading || !isAdmin}>Salvar</button>
+
   // Render
   return createPortal(
     <>

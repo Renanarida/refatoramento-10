@@ -11,24 +11,37 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        // mantém simples: o front manda "password"
-        $data = $request->validate([
-            'email'    => ['required', 'email'],
-            'password' => ['required', 'string'],
+        // valida email; senha tratamos manualmente (aceita 'password' OU 'senha')
+        $request->validate([
+            'email' => ['required', 'email'],
         ]);
 
-        $user = User::where('email', $data['email'])->first();
+        $pwd = $request->input('password', $request->input('senha'));
+        if (!is_string($pwd) || $pwd === '') {
+            return response()->json(['message' => 'Senha é obrigatória.'], 422);
+        }
 
-        if (!$user || !Hash::check($data['password'], $user->password)) {
+        $user = User::where('email', $request->input('email'))->first();
+        if (!$user || !Hash::check($pwd, $user->password)) {
             return response()->json(['message' => 'Credenciais inválidas'], 401);
         }
 
         $token = $user->createToken('app-token')->plainTextToken;
 
+        // calcula role + is_admin de forma robusta
+        $isAdmin = (bool)($user->is_admin ?? ($user->role === 'admin'));
+        $role = $user->role ?? ($isAdmin ? 'admin' : 'user');
+
         return response()->json([
             'token' => $token,
-            // 👇 agora inclui "role" (e o que mais quiser)
-            'user'  => $user->only(['id', 'name', 'email', 'role']),
+            'user'  => [
+                'id'         => $user->id,
+                'name'       => $user->name,
+                'email'      => $user->email,
+                'role'       => $role,
+                'is_admin'   => $isAdmin,
+                'avatar_url' => $user->avatar_path ? asset('storage/'.$user->avatar_path) : null,
+            ],
         ], 200);
     }
 
@@ -39,16 +52,24 @@ class AuthController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        // Inclui 'role' para o front saber se é admin
-        return response()->json($user->only(['id', 'name', 'email', 'role']), 200);
+        $isAdmin = (bool)($user->is_admin ?? ($user->role === 'admin'));
+        $role = $user->role ?? ($isAdmin ? 'admin' : 'user');
+
+        return response()->json([
+            'id'         => $user->id,
+            'name'       => $user->name,
+            'email'      => $user->email,
+            'role'       => $role,
+            'is_admin'   => $isAdmin,
+            'avatar_url' => $user->avatar_path ? asset('storage/'.$user->avatar_path) : null,
+        ], 200);
     }
 
     public function logout(Request $request)
     {
-        // Invalida o token atual (Sanctum)
         $request->user()?->currentAccessToken()?->delete();
 
-        // Se estiver usando sessão também:
+        // se estiver usando sessão também:
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

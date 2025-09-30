@@ -4,8 +4,10 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./services/useAuth"; // ✅ importa o provider
+import { setAuthHeaderFromStorage } from "./services/api";
 import "./index.css";
 
+setAuthHeaderFromStorage(); // <<< garante header no primeiro paint
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
