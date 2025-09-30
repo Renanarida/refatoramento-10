@@ -13,7 +13,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { asUser } = useAuth();           
+  const { asUser } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,7 +50,7 @@ const Login = () => {
       if (user) {
         localStorage.setItem("user", JSON.stringify(user));
         if (user.name) localStorage.setItem("user_name", user.name);
-        asUser(user);            
+        asUser(user);
       }
 
       setSucesso("Login realizado com sucesso!");

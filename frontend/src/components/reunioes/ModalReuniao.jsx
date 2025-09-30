@@ -5,6 +5,21 @@ import { useAuth } from "../../services/useAuth"; // 👈 pega isAdmin
 
 const EV_SALVA = "reuniao:salva";
 
+// ---- helpers de CPF ----
+const onlyDigits = (v) => (v || "").replace(/\D/g, "");
+const maskCpf = (v) => {
+  const d = onlyDigits(v).slice(0, 11);
+  const p1 = d.slice(0, 3);
+  const p2 = d.slice(3, 6);
+  const p3 = d.slice(6, 9);
+  const p4 = d.slice(9, 11);
+  let out = p1;
+  if (p2) out += "." + p2;
+  if (p3) out += "." + p3;
+  if (p4) out += "-" + p4;
+  return out;
+};
+
 export default function ModalReuniao({ registro, onClose, onSaved }) {
   const { isAdmin } = useAuth();              // 👈 define permissões
   const isEditing = !!registro?.id;           // 👈 modo edição?
@@ -33,9 +48,14 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         titulo: registro.titulo ?? "",
         descricao: registro.descricao ?? "",
         data: registro.data ?? "",
-        hora: normalizarHora(registro.hora ?? ""), // <- normaliza também
+        hora: normalizarHora(registro.hora ?? ""),
         local: registro.local ?? "",
-        participantes: registro.participantes ?? [],
+        participantes: (registro.participantes ?? []).map((p) => ({
+          nome: p?.nome ?? "",
+          email: p?.email ?? "",
+          papel: p?.papel ?? "",
+          cpf: maskCpf(p?.cpf ?? ""), // 👈 mostra mascarado na edição
+        })),
       });
     } else {
       setForm({
@@ -67,12 +87,17 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         setSaving(false);
         return;
       }
+      if (!form.hora) {
+        setErrors((prev) => ({ ...(prev || {}), hora: ["A hora é obrigatória."] }));
+        setSaving(false);
+        return;
+      }
 
       // Monta payload com hora normalizada
       const payload = {
         titulo: form.titulo,
         descricao: form.descricao || null,
-        data: form.data,                         // YYYY-MM-DD
+        data: form.data,                                  // YYYY-MM-DD
         hora: form.hora ? normalizarHora(form.hora) : null, // HH:MM
         local: form.local || null,
       };
@@ -83,6 +108,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
           nome: p?.nome ?? "",
           email: p?.email ?? "",
           papel: p?.papel ?? "",
+          cpf: p?.cpf ? onlyDigits(p.cpf) : null, // 👈 só dígitos para o backend
         }));
       }
 
@@ -154,7 +180,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                     className={`form-control ${errors?.titulo ? "is-invalid" : ""}`}
                     value={form.titulo}
                     onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                    disabled={!isAdmin} // 👈 somente admin edita
+                    disabled={!isAdmin}
                   />
                 </div>
 
@@ -184,8 +210,8 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                   <label className="form-label">Hora</label>
                   <input
                     type="time"
-                    step="60"              // <- evita segundos
-                    className="form-control"
+                    step="60"
+                    className={`form-control ${errors?.hora ? "is-invalid" : ""}`}
                     value={form.hora}
                     onChange={(e) => setForm({ ...form, hora: normalizarHora(e.target.value) })}
                     disabled={!isAdmin}
@@ -212,7 +238,13 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                       <button
                         className="btn btn-sm btn-outline-primary"
                         onClick={() =>
-                          setForm((f) => ({ ...f, participantes: [...(f.participantes || []), {}] }))
+                          setForm((f) => ({
+                            ...f,
+                            participantes: [
+                              ...(f.participantes || []),
+                              { nome: "", email: "", papel: "", cpf: "" }, // 👈 já cria com cpf
+                            ],
+                          }))
                         }
                       >
                         Adicionar
@@ -223,7 +255,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                   <div className="mt-2">
                     {(form.participantes || []).map((p, i) => (
                       <div className="row g-2 align-items-center mb-2" key={i}>
-                        <div className="col-md-4">
+                        <div className="col-md-3">
                           <input
                             className="form-control"
                             placeholder="Nome"
@@ -236,7 +268,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                             disabled={!isAdmin}
                           />
                         </div>
-                        <div className="col-md-4">
+                        <div className="col-md-3">
                           <input
                             className="form-control"
                             placeholder="Email"
@@ -250,6 +282,20 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                           />
                         </div>
                         <div className="col-md-3">
+                          <input
+                            className="form-control"
+                            placeholder="CPF (000.000.000-00)"
+                            inputMode="numeric"
+                            value={p.cpf || ""}
+                            onChange={(e) => {
+                              const arr = [...(form.participantes || [])];
+                              arr[i] = { ...arr[i], cpf: maskCpf(e.target.value) }; // 👈 máscara
+                              setForm({ ...form, participantes: arr });
+                            }}
+                            disabled={!isAdmin}
+                          />
+                        </div>
+                        <div className="col-md-2">
                           <input
                             className="form-control"
                             placeholder="Papel"
