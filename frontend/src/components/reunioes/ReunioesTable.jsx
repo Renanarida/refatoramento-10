@@ -273,13 +273,13 @@ export default function ReunioesTable({
                         <td className="text-end">
                           <div className="btn-group">
                             <button
-                              className="btn btn-sm btn-outline-secondary"
+                              className="btn btn-sm btn-warning"
                               onClick={() => onEditar(r)}
                             >
                               Editar
                             </button>
                             <button
-                              className="btn btn-sm btn-outline-danger"
+                              className="btn btn-sm btn-danger"
                               onClick={() => excluir(r.id)}
                             >
                               Excluir

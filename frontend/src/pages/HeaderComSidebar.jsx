@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 // import { useNavigate, Link, useLocation } from "react-router-dom";
 // import { doLogout } from "../services/Auth"; // <- minúsculo
 import "../style/header-sidebar.css";
-import menuIcon from "../assets/menu-white.svg";
+import menuIcon from "../assets/menu.png";
 
 const API = "http://localhost:8000/api";
 
@@ -108,7 +108,11 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         <div className="hsd-sidebar__header">
           <span className="hsd-brand">Reuniões</span>
           <button className="hsd-icon-btn" onClick={() => setOpen(false)} aria-label="Fechar menu">
-            ✕
+            <img
+              className="menu-icon"
+              src="/menu.png"
+              alt="menu"
+            />
           </button>
         </div>
 

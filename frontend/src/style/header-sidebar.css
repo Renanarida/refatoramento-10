@@ -22,6 +22,15 @@
   border-bottom: 1px solid var(--hsd-border);
 }
 
+.menu-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  object-fit: contain;
+  /* se a imagem for preta e você quer branca: */
+  filter: invert(1) brightness(2);
+}
+
 .hsd-header--fixed {
   position: fixed;
   top: 0;

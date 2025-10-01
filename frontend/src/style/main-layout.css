@@ -1,0 +1,22 @@
+/* zera qualquer empurrão herdado do header/sidebar */
+.app-shell,
+.app-content {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* centraliza o que vem do <Outlet /> */
+.app-content {
+  display: flex;
+  justify-content: center;   /* centro horizontal */
+  align-items: center;   /* mude para center se quiser no meio da tela */
+  padding: 24px;
+  min-height: calc(100vh - 64px); /* ajusta pela altura do header se for ~64px */
+  box-sizing: border-box;
+}
+
+/* opcional: limita largura do miolo */
+.app-container {
+  width: 100%;
+  max-width: 980px;          /* ajuste a gosto */
+}
