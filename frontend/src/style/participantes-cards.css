@@ -1,0 +1,150 @@
+/* ---------- WRAPPER / HEADER ---------- */
+.pcards-wrapper { display: grid; gap: 16px; }
+.pcards-header { display: flex; align-items: center; justify-content: space-between; }
+
+/* ---------- GRID DE CARDS ---------- */
+.pcards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.pcards-empty {
+  padding: 24px;
+  border: 1px dashed #ccc;
+  border-radius: 12px;
+  text-align: center;
+  color: #666;
+  background: #fff;
+}
+
+/* ---------- CARD ---------- */
+.pcard {
+  position: relative;             /* garante que tudo fique dentro do card */
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* Título (nome) */
+.pcard-title {
+  margin: 0 0 6px 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  color: #111;
+  /* neutraliza qualquer estilo global de header/h5 */
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+/* Linhas de info */
+.pcard-line {
+  margin: 2px 0;
+  color: #333;
+  font-size: 0.92rem;
+}
+
+/* ---------- AÇÕES (DENTRO DO CARD) ---------- */
+.pcard-actions {
+  position: static !important;     /* nada de fixed/absolute herdado */
+  width: auto !important;          /* não ocupar 100% da tela */
+  margin-top: 12px;
+  background: transparent !important;
+  border: none !important;
+  padding: 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;       /* botões à direita */
+}
+
+/* Botões (se não quiser depender do Bootstrap) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary { background: #2563eb; color: #fff; }
+.btn-warning { background: #d97706; color: #fff; }
+.btn-success { background: #16a34a; color: #fff; }
+.btn-danger  { background: #dc2626; color: #fff; }
+.btn-light   { background: #f3f4f6; color: #111827; border: 1px solid #ddd; }
+
+/* Garante que .btn-sm do Bootstrap não estoure layout */
+.btn-sm { height: 30px; padding: 0 10px; font-size: 0.82rem; }
+
+/* ---------- MODAL DOS CARDS ---------- */
+.pcard-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  display: grid; place-items: center;
+  z-index: 9999;
+}
+
+.pcard-dialog {
+  width: min(720px, 92vw);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.pcard-dialog-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid #eee;
+}
+
+.pcard-x {
+  font-size: 22px; border: none; background: transparent;
+  line-height: 1; cursor: pointer;
+}
+
+.pcard-dialog-body { padding: 16px; }
+
+.pcard-form-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.pcard-form-grid label { display: grid; gap: 6px; }
+.pcard-form-grid input {
+  height: 38px; padding: 8px 10px;
+  border: 1px solid #ddd; border-radius: 8px;
+}
+
+.pcard-dialog-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 16px; border-top: 1px solid #eee;
+}
+
+/* ---------- BOAS PRÁTICAS CONTRA ESTILOS GLOBAIS ---------- */
+/* Se algum tema aplicar padding/margin global em header/footer dentro de cards, neutraliza: */
+.pcard header, .pcard footer {
+  background: transparent !important;
+  border: 0 !important;
+  margin: 0;
+  padding: 0;
+}
+
+/* Evita barra “grudada” ao fundo da tela por classe global */
+.pcard .footer, .pcard .card-footer, .pcard .btn-toolbar {
+  position: static !important;
+  width: auto !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}

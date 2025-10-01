@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import API from "../../services/api"; // usa o client axios configurado
 import { useAuth } from "../../services/useAuth"; // 👈 pega isAdmin
 
+import ParticipantesCards from "./ParticipantesCards";      // mesma pasta, nome igualzinho
+import "../../style/participantes-cards.css";               // CSS está em src/style
+
 const EV_SALVA = "reuniao:salva";
 
 // ---- helpers de CPF ----
@@ -147,11 +150,6 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
     }
   };
 
-  //Precisa testar ainda
-  // const { isAdmin, loading } = useAuth();
-
-  // <button disabled={loading || !isAdmin}>Salvar</button>
-
   // Render
   return createPortal(
     <>
@@ -233,103 +231,13 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                   />
                 </div>
 
-                {/* Participantes */}
+                {/* Participantes (cards) */}
                 <div className="col-12">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <label className="form-label m-0">Participantes</label>
-
-                    {/* Botão de adicionar só para admin */}
-                    {isAdmin && (
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            participantes: [
-                              ...(f.participantes || []),
-                              { nome: "", email: "", papel: "", cpf: "" }, // 👈 já cria com cpf
-                            ],
-                          }))
-                        }
-                      >
-                        Adicionar
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-2">
-                    {(form.participantes || []).map((p, i) => (
-                      <div className="row g-2 align-items-center mb-2" key={i}>
-                        <div className="col-md-3">
-                          <input
-                            className="form-control"
-                            placeholder="Nome"
-                            value={p.nome || ""}
-                            onChange={(e) => {
-                              const arr = [...(form.participantes || [])];
-                              arr[i] = { ...arr[i], nome: e.target.value };
-                              setForm({ ...form, participantes: arr });
-                            }}
-                            disabled={!isAdmin}
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <input
-                            className="form-control"
-                            placeholder="Email"
-                            value={p.email || ""}
-                            onChange={(e) => {
-                              const arr = [...(form.participantes || [])];
-                              arr[i] = { ...arr[i], email: e.target.value };
-                              setForm({ ...form, participantes: arr });
-                            }}
-                            disabled={!isAdmin}
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <input
-                            className="form-control"
-                            placeholder="CPF (000.000.000-00)"
-                            inputMode="numeric"
-                            value={p.cpf || ""}
-                            onChange={(e) => {
-                              const arr = [...(form.participantes || [])];
-                              arr[i] = { ...arr[i], cpf: maskCpf(e.target.value) }; // 👈 máscara
-                              setForm({ ...form, participantes: arr });
-                            }}
-                            disabled={!isAdmin}
-                          />
-                        </div>
-                        <div className="col-md-2">
-                          <input
-                            className="form-control"
-                            placeholder="Papel"
-                            value={p.papel || ""}
-                            onChange={(e) => {
-                              const arr = [...(form.participantes || [])];
-                              arr[i] = { ...arr[i], papel: e.target.value };
-                              setForm({ ...form, participantes: arr });
-                            }}
-                            disabled={!isAdmin}
-                          />
-                        </div>
-                        <div className="col-md-1 text-end">
-                          {isAdmin && (
-                            <button
-                              className="btn btn-outline-danger btn-sm"
-                              onClick={() => {
-                                const arr = [...(form.participantes || [])];
-                                arr.splice(i, 1);
-                                setForm({ ...form, participantes: arr });
-                              }}
-                            >
-                              &times;
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <ParticipantesCards
+                    value={form.participantes}
+                    onChange={(arr) => setForm((f) => ({ ...f, participantes: arr }))}
+                    canEdit={isAdmin}
+                  />
                 </div>
               </div>
             </div>
@@ -342,7 +250,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                 </button>
               )}
 
-              {/* Admin + Novo: Adicionar e Cancelar */}
+              {/* Admin + Novo */}
               {isAdmin && !isEditing && (
                 <>
                   <button className="btn btn-primary" onClick={salvar} disabled={saving}>
@@ -354,7 +262,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
                 </>
               )}
 
-              {/* Admin + Edição: Salvar, Excluir e Cancelar */}
+              {/* Admin + Edição */}
               {isAdmin && isEditing && (
                 <>
                   <button className="btn btn-primary" onClick={salvar} disabled={saving}>
