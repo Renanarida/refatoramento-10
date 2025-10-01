@@ -36,6 +36,7 @@ function App() {
             <ProtegerRoute allow={["participant"]} redirectTo="/entrar-participante" />
           }
         >
+          <Route path="/participante" element={<DashboardParticipante />} />
           <Route path="/dashboard-participante" element={<DashboardParticipante />} />
         </Route>
 
