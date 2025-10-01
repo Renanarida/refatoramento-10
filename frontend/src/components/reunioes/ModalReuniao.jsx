@@ -266,10 +266,10 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
               {isAdmin && isEditing && (
                 <>
                   <button className="btn btn-primary" onClick={salvar} disabled={saving}>
-                    {saving ? "Salvando..." : "Salvar alterações"}
+                    {saving ? "Salvando..." : "Salvar Reunião"}
                   </button>
                   <button className="btn btn-danger" onClick={excluir} disabled={saving}>
-                    {saving ? "Excluindo..." : "Excluir"}
+                    {saving ? "Excluindo..." : "Excluir Reunião"}
                   </button>
                   <button className="btn btn-outline-secondary" onClick={onClose} disabled={saving}>
                     Cancelar

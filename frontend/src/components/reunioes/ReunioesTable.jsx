@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import API from "../../services/api"; // usa o client com interceptor
-import { useAuth } from "../../services/useAuth"; // <- usamos para saber o mode
+import API from "../../services/api";
+import { useAuth } from "../../services/useAuth";
 
 const EV_SALVA = "reuniao:salva";
 
@@ -9,7 +9,7 @@ export default function ReunioesTable({
   onEditar = () => {},
   refreshTick = 0,
 }) {
-  const { mode } = useAuth();               // 'admin' | 'user' | 'participant' | 'visitor'
+  const { mode } = useAuth();
   const isAdmin = mode === "admin";
 
   const [itens, setItens] = useState([]);
@@ -43,7 +43,6 @@ export default function ReunioesTable({
     setLoading(true);
     setErr(null);
     try {
-      // garante header X-CPF se for participant (caso seu api.js não faça isso)
       if (mode === "participant") {
         const cpf = localStorage.getItem("cpf");
         if (cpf) API.defaults.headers["X-CPF"] = cpf;
@@ -51,7 +50,6 @@ export default function ReunioesTable({
 
       const { data } = await API.get(endpoint, {
         params: {
-          // filtros comuns — se os endpoints públicos/participante não usarem, o backend ignora
           q: q || undefined,
           data_ini: dataIni || undefined,
           data_fim: dataFim || undefined,
@@ -86,7 +84,6 @@ export default function ReunioesTable({
     };
     window.addEventListener(EV_SALVA, handler);
     return () => window.removeEventListener(EV_SALVA, handler);
-    // eslint-disable-next-line
   }, []);
 
   const ordenar = (key) => {
@@ -215,7 +212,6 @@ export default function ReunioesTable({
             </select>
           </div>
 
-          {/* Botão Cadastrar só para ADMIN */}
           {isAdmin && (
             <div className="ms-auto">
               <label className="form-label mb-1 d-block invisible">.</label>
@@ -242,6 +238,7 @@ export default function ReunioesTable({
               <thead>
                 <tr>
                   {headerSort("titulo", "Título")}
+                  {headerSort("descricao", "Descrição")}{/* NEW */}
                   {headerSort("data", "Data")}
                   {headerSort("hora", "Hora")}
                   {headerSort("local", "Local")}
@@ -256,7 +253,7 @@ export default function ReunioesTable({
                 {itensOrdenados.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={isAdmin ? 5 : 4}
+                      colSpan={isAdmin ? 6 : 5}  /* NEW: +1 coluna */
                       className="text-center text-muted py-4"
                     >
                       Nenhuma reunião encontrada.
@@ -266,6 +263,16 @@ export default function ReunioesTable({
                   itensOrdenados.map((r) => (
                     <tr key={r.id}>
                       <td>{r.titulo}</td>
+                      {/* NEW: célula de descrição com ellipsis + tooltip */}
+                      <td>
+                        <span
+                          title={r.descricao || ""}
+                          className="d-inline-block text-truncate"
+                          style={{ maxWidth: 360 }}
+                        >
+                          {r.descricao || "-"}
+                        </span>
+                      </td>
                       <td>{r.data || ""}</td>
                       <td>{r.hora || ""}</td>
                       <td>{r.local || ""}</td>
