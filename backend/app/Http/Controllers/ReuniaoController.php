@@ -68,6 +68,80 @@ class ReuniaoController extends Controller
         return $this->stats();
     }
 
+
+    public function statsPeriodos()
+{
+    $tz  = 'America/Sao_Paulo';
+    $now = now($tz);
+
+    // Limites
+    $iniSemana = $now->copy()->startOfWeek(); // seg-dom (ajuste se quiser)
+    $fimSemana = $now->copy()->endOfWeek();
+
+    $iniMes = $now->copy()->startOfMonth();
+    $fimMes = $now->copy()->endOfMonth();
+
+    $iniAno = $now->copy()->startOfYear();
+    $fimAno = $now->copy()->endOfYear();
+
+    // Totais
+    $totalSemana = Reuniao::whereBetween('data', [$iniSemana->toDateString(), $fimSemana->toDateString()])->count();
+
+    $totalMes = Reuniao::whereYear('data', $now->year)
+        ->whereMonth('data', $now->month)
+        ->count();
+
+    $totalAno = Reuniao::whereYear('data', $now->year)->count();
+
+    // Séries (opcional para gráficos mais ricos)
+    $semanaPorDia = Reuniao::select([
+            DB::raw('DATE(data) as dia'),
+            DB::raw('COUNT(*) as total')
+        ])
+        ->whereBetween('data', [$iniSemana->toDateString(), $fimSemana->toDateString()])
+        ->groupBy('dia')
+        ->orderBy('dia')
+        ->get();
+
+    $mesPorDia = Reuniao::select([
+            DB::raw('DATE(data) as dia'),
+            DB::raw('COUNT(*) as total')
+        ])
+        ->whereBetween('data', [$iniMes->toDateString(), $fimMes->toDateString()])
+        ->groupBy('dia')
+        ->orderBy('dia')
+        ->get();
+
+    $anoPorMes = Reuniao::select([
+            DB::raw('DATE_FORMAT(data, "%Y-%m") as ym'),
+            DB::raw('COUNT(*) as total')
+        ])
+        ->whereBetween('data', [$iniAno->toDateString(), $fimAno->toDateString()])
+        ->groupBy('ym')
+        ->orderBy('ym')
+        ->get();
+
+    return response()->json([
+        'ref' => [
+            'tz'        => $tz,
+            'agora'     => $now->toDateTimeString(),
+            'semana'    => ['inicio' => $iniSemana->toDateString(), 'fim' => $fimSemana->toDateString()],
+            'mes'       => ['inicio' => $iniMes->toDateString(),   'fim' => $fimMes->toDateString()],
+            'ano'       => ['inicio' => $iniAno->toDateString(),   'fim' => $fimAno->toDateString()],
+        ],
+        'contagens' => [
+            'semana' => $totalSemana,
+            'mes'    => $totalMes,
+            'ano'    => $totalAno,
+        ],
+        'series' => [
+            'semana_por_dia' => $semanaPorDia, // [{ dia: '2025-10-01', total: 3 }, ...]
+            'mes_por_dia'    => $mesPorDia,    // idem
+            'ano_por_mes'    => $anoPorMes,    // [{ ym: '2025-01', total: 10 }, ...]
+        ],
+    ]);
+}
+
     // POST /api/reunioes
     public function store(Request $req)
     {

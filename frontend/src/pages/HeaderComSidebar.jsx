@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, NavLink, Link, useLocation } from "react-router-dom";
 // import { useNavigate, Link, useLocation } from "react-router-dom";
 // import { doLogout } from "../services/Auth"; // <- minúsculo
 import "../style/header-sidebar.css";
@@ -117,10 +117,18 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         </div>
 
         <nav className="hsd-nav">
-          <Link to="/" className="hsd-nav__link">🏠 Dashboard</Link>
-          <Link to="/reunioes" className="hsd-nav__link">🗓️ Reuniões</Link>
-          <Link to="/participantes" className="hsd-nav__link">👥 Participantes</Link>
-          <Link to="/configuracoes" className="hsd-nav__link">⚙️ Configurações</Link>
+          <NavLink to="/dashboard" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
+            🏠 Dashboard
+          </NavLink>
+          <NavLink to="/reunioes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
+            🗓️ Reuniões
+          </NavLink>
+          <NavLink to="/participantes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
+            👥 Participantes
+          </NavLink>
+          <NavLink to="/configuracoes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
+            ⚙️ Configurações
+          </NavLink>
         </nav>
 
         <div className="hsd-sidebar__footer">

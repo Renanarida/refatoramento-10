@@ -24,7 +24,7 @@ Route::get('/public/reunioes', [ReuniaoController::class, 'publicIndex']); // <-
 Route::middleware('cpf.participant')->group(function () {
     // Participante via CPF (header X-CPF OU query ?cpf=)
     Route::get('reunioes/{id}/participantes-by-cpf', [ReuniaoController::class, 'participantesByCpf']);
-    
+
     Route::get('/participante/reunioes', [ReuniaoController::class, 'participantIndex']);
     Route::get('/participante/reunioes/{id}', [ReuniaoController::class, 'participantShow']);
 });
@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // leitura
         Route::get('/', [ReuniaoController::class, 'index']);        // /api/reunioes
         Route::get('/stats', [ReuniaoController::class, 'stats']);   // /api/reunioes/stats
+        Route::get('/reunioes/stats-periodos', [ReuniaoController::class, 'statsPeriodos']);
         Route::get('/cards', [ReuniaoController::class, 'cards']);   // /api/reunioes/cards
         Route::get('/{reuniao}', [ReuniaoController::class, 'show']); // manter DEPOIS de stats/cards
 

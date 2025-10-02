@@ -7,18 +7,19 @@ import Cadastrar from "./pages/Cadastrar";
 import Login from "./pages/Login";
 import ReunioesPage from "./pages/ReunioesPage";
 import Logout from "./pages/Logout";
+import Dashboard from "./pages/Dashboard"; // ✅ gráfico
 
 // novas páginas
 import DashboardVisitante from "./pages/DashboardVisitante";
 import DashboardParticipante from "./pages/DashboardParticipante";
 
-// 🆕 layout com header + sidebar
+// layout com header + sidebar
 import MainLayout from "./layouts/MainLayout.jsx";
 
 function App() {
   return (
     <Routes>
-      {/* públicas SEM header/sidebar (mantidas como estavam) */}
+      {/* públicas SEM header/sidebar */}
       <Route path="/" element={<Home />} />
       <Route path="/cadastrar" element={<Cadastrar />} />
       <Route path="/login" element={<Login />} />
@@ -42,6 +43,7 @@ function App() {
 
         {/* privadas (user/admin) */}
         <Route element={<ProtegerRoute allow={["user", "admin"]} />}>
+          <Route path="/dashboard" element={<Dashboard />} /> {/* ✅ NOVA ROTA */}
           <Route path="/reunioes" element={<ReunioesPage />} />
           <Route path="/logout" element={<Logout />} />
         </Route>
