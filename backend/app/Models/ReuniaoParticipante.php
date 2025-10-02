@@ -12,11 +12,10 @@ class ReuniaoParticipante extends Model
         'reuniao_id',
         'nome',
         'email',
+        'cpf',
         'papel',
-        'cpf',        // <— importante
-        'presenca',
-        'observacoes',
-    ];
+    // 'telefone', // 👈 novo campo
+];
 
     public $timestamps = true;
 

@@ -78,10 +78,11 @@ class ReuniaoController extends Controller
             'local' => 'nullable|string|max:255',
             'metadados' => 'nullable|array',
             'participantes' => 'nullable|array',
-            'participantes.*.nome'  => 'nullable|string|max:255',
-            'participantes.*.email' => 'nullable|email|max:255',
-            'participantes.*.papel' => 'nullable|string|max:100',
-            'participantes.*.cpf'   => 'nullable|string|size:11', // salvar só dígitos
+            'participantes.*.nome'     => 'nullable|string|max:255',
+            'participantes.*.email'    => 'nullable|email|max:255',
+            // 'participantes.*.telefone' => 'nullable|string|max:30', // ✅
+            'participantes.*.papel'    => 'nullable|string|max:100',
+            'participantes.*.cpf'      => 'nullable|string|max:20',
         ]);
 
         // Ajuste se tiver Auth: aqui só pegamos algum user_id (ex.: primeiro)
@@ -114,9 +115,10 @@ class ReuniaoController extends Controller
 
             ReuniaoParticipante::create([
                 'reuniao_id' => $reuniao->id,
-                'nome'       => $p['nome']  ?? null,
-                'email'      => $p['email'] ?? null,
-                'papel'      => $p['papel'] ?? null,
+                'nome'       => $p['nome']     ?? null,
+                'email'      => $p['email']    ?? null,
+                // 'telefone'   => $p['telefone'] ?? null, // ✅
+                'papel'      => $p['papel']    ?? null,
                 'cpf'        => $cpf,
             ]);
         }
@@ -141,10 +143,11 @@ class ReuniaoController extends Controller
             'local' => 'nullable|string|max:255',
             'metadados' => 'nullable|array',
             'participantes' => 'nullable|array',
-            'participantes.*.nome'  => 'nullable|string|max:255',
-            'participantes.*.email' => 'nullable|email|max:255',
-            'participantes.*.papel' => 'nullable|string|max:100',
-            'participantes.*.cpf'   => 'nullable|string|size:11',
+            'participantes.*.nome'     => 'nullable|string|max:255',
+            'participantes.*.email'    => 'nullable|email|max:255',
+            // 'participantes.*.telefone' => 'nullable|string|max:30', // 👈 AQUI
+            'participantes.*.papel'    => 'nullable|string|max:100',
+            'participantes.*.cpf'      => 'nullable|string|max:20',
         ]);
 
         $reuniao->fill($data)->save();
@@ -170,9 +173,10 @@ class ReuniaoController extends Controller
 
                 ReuniaoParticipante::create([
                     'reuniao_id' => $reuniao->id,
-                    'nome'       => $p['nome']  ?? null,
-                    'email'      => $p['email'] ?? null,
-                    'papel'      => $p['papel'] ?? null,
+                    'nome'       => $p['nome']     ?? null,
+                    'email'      => $p['email']    ?? null,
+                    // 'telefone'   => $p['telefone'] ?? null, // 👈 AQUI
+                    'papel'      => $p['papel']    ?? null,
                     'cpf'        => $cpf,
                 ]);
             }
@@ -215,7 +219,7 @@ class ReuniaoController extends Controller
         }
 
         return Reuniao::query()
-            ->select('reunioes.id','reunioes.titulo','reunioes.data','reunioes.hora','reunioes.local','reunioes.descricao')
+            ->select('reunioes.id', 'reunioes.titulo', 'reunioes.data', 'reunioes.hora', 'reunioes.local', 'reunioes.descricao')
             ->join('reuniao_participantes as rp', 'rp.reuniao_id', '=', 'reunioes.id')
             ->where('rp.cpf', $cpfDigits)
             ->orderBy('reunioes.data', 'desc')
@@ -243,8 +247,8 @@ class ReuniaoController extends Controller
             ->where('reunioes.id', $id)
             ->whereExists(function ($q) use ($cpfDigits) {
                 $q->from('reuniao_participantes as rp')
-                  ->whereColumn('rp.reuniao_id', 'reunioes.id')
-                  ->where('rp.cpf', $cpfDigits);
+                    ->whereColumn('rp.reuniao_id', 'reunioes.id')
+                    ->where('rp.cpf', $cpfDigits);
             })
             ->first();
 

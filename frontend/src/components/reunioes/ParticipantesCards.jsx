@@ -67,7 +67,7 @@ export default function ParticipantesCards({ value = [], onChange, canEdit = tru
           <article className="pcard" key={idx}>
             <header className="pcard-title">{p.nome || "(sem nome)"}</header>
             <div className="pcard-line">{p.email}</div>
-            <div className="pcard-line"><strong>Telefone:</strong> {p.telefone || "—"}</div>
+            {/* <div className="pcard-line"><strong>Telefone:</strong> {p.telefone || "—"}</div> */}
             <div className="pcard-line"><strong>CPF:</strong> {p.cpf || "—"}</div>
             <div className="pcard-line"><strong>Papel:</strong> {p.papel || "—"}</div>
 
@@ -123,7 +123,7 @@ export default function ParticipantesCards({ value = [], onChange, canEdit = tru
                     disabled={!canEdit}
                   />
                 </label>
-                <label>
+                {/* <label>
                   <span>Telefone</span>
                   <input
                     type="text"
@@ -132,7 +132,7 @@ export default function ParticipantesCards({ value = [], onChange, canEdit = tru
                     placeholder="(44) 99999-9999"
                     disabled={!canEdit}
                   />
-                </label>
+                </label> */}
                 <label>
                   <span>CPF</span>
                   <input
