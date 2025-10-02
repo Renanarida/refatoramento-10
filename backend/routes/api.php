@@ -23,6 +23,8 @@ Route::get('/public/reunioes', [ReuniaoController::class, 'publicIndex']); // <-
 // ---------- PARTICIPANTE (sem login, mas requer CPF) ----------
 Route::middleware('cpf.participant')->group(function () {
     // Participante via CPF (header X-CPF OU query ?cpf=)
+    Route::get('reunioes/{id}/participantes-by-cpf', [ReuniaoController::class, 'participantesByCpf']);
+    
     Route::get('/participante/reunioes', [ReuniaoController::class, 'participantIndex']);
     Route::get('/participante/reunioes/{id}', [ReuniaoController::class, 'participantShow']);
 });

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Reuniao;
 use App\Models\ReuniaoParticipante;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\DB;
 
 class ReuniaoController extends Controller
@@ -257,6 +258,47 @@ class ReuniaoController extends Controller
         }
 
         return $reuniao;
+    }
+
+    /**
+     * GET /api/reunioes/{id}/participantes-by-cpf?cpf=XXXXXXXXXXX
+     * Retorna os participantes da reunião SOMENTE se o CPF informado participa dela.
+     * Não expõe CPFs dos demais participantes.
+     */
+    public function participantesByCpf($id, Request $request)
+    {
+        $cpf = $request->attributes->get('cpf_participante') // caso algum middleware injete
+            ?? $request->query('cpf')                        // querystring
+            ?? null;
+
+        if (!$cpf) {
+            return response()->json(['message' => 'CPF obrigatório'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $cpfDigits = preg_replace('/\D+/', '', $cpf);
+        if (strlen($cpfDigits) !== 11 || !$this->validaCpf($cpfDigits)) {
+            return response()->json(['message' => 'CPF inválido'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // Verifica se o CPF pertence à reunião
+        $pertence = ReuniaoParticipante::where('reuniao_id', $id)
+            ->where('cpf', $cpfDigits)
+            ->exists();
+
+        if (!$pertence) {
+            return response()->json(['message' => 'Forbidden — CPF não pertence a esta reunião'], Response::HTTP_FORBIDDEN);
+        }
+
+        // Carrega participantes sem expor CPF
+        $reuniao = Reuniao::with(['participantes' => function ($q) {
+                $q->select('id', 'reuniao_id', 'nome', 'email', 'papel');
+            }])
+            ->findOrFail($id);
+
+        return response()->json([
+            'participantes' => $reuniao->participantes,
+            'reuniao_id'    => $reuniao->id,
+        ], Response::HTTP_OK);
     }
 
     // ===================== UTIL =====================
