@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import API from "../../services/api";
 import { useAuth } from "../../services/useAuth";
+import { maskCpf, maskTelefone } from "../../utils/masks";
 
 const EV_SALVA = "reuniao:salva";
 

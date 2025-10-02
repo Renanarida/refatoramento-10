@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { maskCpf, maskTelefone } from "../../utils/masks";
 
 const NOVO = { nome: "", email: "", telefone: "", cpf: "", papel: "" };
 
@@ -67,8 +68,7 @@ export default function ParticipantesCards({ value = [], onChange, canEdit = tru
           <article className="pcard" key={idx}>
             <header className="pcard-title">{p.nome || "(sem nome)"}</header>
             <div className="pcard-line">{p.email}</div>
-            {/* <div className="pcard-line"><strong>Telefone:</strong> {p.telefone || "—"}</div> */}
-            <div className="pcard-line"><strong>CPF:</strong> {p.cpf || "—"}</div>
+            {p.cpf && <div className="small">CPF: {maskCpf(p.cpf)}</div>}
             <div className="pcard-line"><strong>Papel:</strong> {p.papel || "—"}</div>
 
             <footer className="pcard-actions">
