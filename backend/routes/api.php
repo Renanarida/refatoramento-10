@@ -17,13 +17,17 @@ use App\Http\Controllers\ReuniaoController;
 Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store'); // cadastro
 Route::post('/login', [AuthController::class, 'login']);                               // login
 
+// ✅✅✅ CHECK CPF (PÚBLICA | fora de auth:sanctum e fora de cpf.participant)
+Route::post('/participante/check-cpf', [ReuniaoController::class, 'checkCpf'])
+    ->middleware('throttle:20,1'); // evita brute force
+
 // ---------- PÚBLICO (sem login, sem CPF) ----------
 Route::get('/public/reunioes', [ReuniaoController::class, 'publicIndex']); // <- fora do cpf.participant
 
 // ---------- PARTICIPANTE (sem login, mas requer CPF) ----------
 Route::middleware('cpf.participant')->group(function () {
     // Participante via CPF (header X-CPF OU query ?cpf=)
-    Route::get('reunioes/{id}/participantes-by-cpf', [ReuniaoController::class, 'participantesByCpf']);
+    Route::get('/reunioes/{id}/participantes-by-cpf', [ReuniaoController::class, 'participantesByCpf']);
 
     Route::get('/participante/reunioes', [ReuniaoController::class, 'participantIndex']);
     Route::get('/participante/reunioes/{id}', [ReuniaoController::class, 'participantShow']);
@@ -62,11 +66,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // ---------- REUNIÕES ----------
     Route::prefix('reunioes')->group(function () {
         // leitura
-        Route::get('/', [ReuniaoController::class, 'index']);        // /api/reunioes
-        Route::get('/stats', [ReuniaoController::class, 'stats']);   // /api/reunioes/stats
-        Route::get('/reunioes/stats-periodos', [ReuniaoController::class, 'statsPeriodos']);
-        Route::get('/cards', [ReuniaoController::class, 'cards']);   // /api/reunioes/cards
-        Route::get('/{reuniao}', [ReuniaoController::class, 'show']); // manter DEPOIS de stats/cards
+        Route::get('/', [ReuniaoController::class, 'index']);              // GET /api/reunioes
+        Route::get('/stats', [ReuniaoController::class, 'stats']);         // GET /api/reunioes/stats
+        Route::get('/stats-periodos', [ReuniaoController::class, 'statsPeriodos']); // GET /api/reunioes/stats-periodos
+        Route::get('/cards', [ReuniaoController::class, 'cards']);         // GET /api/reunioes/cards
+
+        // 🔚 deixa por último para não capturar "stats-periodos"
+        Route::get('/{reuniao}', [ReuniaoController::class, 'show']);
 
         // escrita (ADMIN)
         Route::middleware('role:admin')->group(function () {

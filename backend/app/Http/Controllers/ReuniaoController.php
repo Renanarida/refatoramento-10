@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reuniao;
+use Carbon\Carbon;
 use App\Models\ReuniaoParticipante;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -69,79 +70,73 @@ class ReuniaoController extends Controller
     }
 
 
-    public function statsPeriodos()
-{
-    $tz  = 'America/Sao_Paulo';
-    $now = now($tz);
+    public function statsPeriodos(Request $req)
+    {
+        $tz = config('app.timezone', 'America/Sao_Paulo');
+        $agora = Carbon::now($tz);
 
-    // Limites
-    $iniSemana = $now->copy()->startOfWeek(); // seg-dom (ajuste se quiser)
-    $fimSemana = $now->copy()->endOfWeek();
+        $iniSemana = (clone $agora)->startOfWeek(Carbon::MONDAY)->toDateString();
+        $fimSemana = (clone $agora)->endOfWeek(Carbon::SUNDAY)->toDateString();
 
-    $iniMes = $now->copy()->startOfMonth();
-    $fimMes = $now->copy()->endOfMonth();
+        $iniMes = (clone $agora)->startOfMonth()->toDateString();
+        $fimMes = (clone $agora)->endOfMonth()->toDateString();
 
-    $iniAno = $now->copy()->startOfYear();
-    $fimAno = $now->copy()->endOfYear();
+        $iniAno = (clone $agora)->startOfYear()->toDateString();
+        $fimAno = (clone $agora)->endOfYear()->toDateString();
 
-    // Totais
-    $totalSemana = Reuniao::whereBetween('data', [$iniSemana->toDateString(), $fimSemana->toDateString()])->count();
+        $contagens = [
+            'semana' => Reuniao::whereBetween('data', [$iniSemana, $fimSemana])->count(),
+            'mes'    => Reuniao::whereBetween('data', [$iniMes, $fimMes])->count(),
+            'ano'    => Reuniao::whereBetween('data', [$iniAno, $fimAno])->count(),
+        ];
 
-    $totalMes = Reuniao::whereYear('data', $now->year)
-        ->whereMonth('data', $now->month)
-        ->count();
+        // Semana por dia (seg a dom)
+        $semanaPorDia = [];
+        for ($i = 0; $i < 7; $i++) {
+            $d = Carbon::parse($iniSemana, $tz)->addDays($i);
+            $semanaPorDia[] = [
+                'dia'   => $d->isoFormat('dd D/M'),
+                'total' => Reuniao::whereDate('data', $d->toDateString())->count(),
+            ];
+        }
 
-    $totalAno = Reuniao::whereYear('data', $now->year)->count();
+        // Mês por dia
+        $mesPorDia = [];
+        $diasNoMes = $agora->daysInMonth;
+        for ($i = 0; $i < $diasNoMes; $i++) {
+            $d = Carbon::parse($iniMes, $tz)->addDays($i);
+            $mesPorDia[] = [
+                'dia'   => $d->format('d/m'),
+                'total' => Reuniao::whereDate('data', $d->toDateString())->count(),
+            ];
+        }
 
-    // Séries (opcional para gráficos mais ricos)
-    $semanaPorDia = Reuniao::select([
-            DB::raw('DATE(data) as dia'),
-            DB::raw('COUNT(*) as total')
-        ])
-        ->whereBetween('data', [$iniSemana->toDateString(), $fimSemana->toDateString()])
-        ->groupBy('dia')
-        ->orderBy('dia')
-        ->get();
+        // Ano por mês
+        $anoPorMes = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $start = Carbon::create($agora->year, $m, 1, 0, 0, 0, $tz);
+            $end   = (clone $start)->endOfMonth();
+            $anoPorMes[] = [
+                'mes'   => $start->format('m/Y'),
+                'total' => Reuniao::whereBetween('data', [$start->toDateString(), $end->toDateString()])->count(),
+            ];
+        }
 
-    $mesPorDia = Reuniao::select([
-            DB::raw('DATE(data) as dia'),
-            DB::raw('COUNT(*) as total')
-        ])
-        ->whereBetween('data', [$iniMes->toDateString(), $fimMes->toDateString()])
-        ->groupBy('dia')
-        ->orderBy('dia')
-        ->get();
-
-    $anoPorMes = Reuniao::select([
-            DB::raw('DATE_FORMAT(data, "%Y-%m") as ym'),
-            DB::raw('COUNT(*) as total')
-        ])
-        ->whereBetween('data', [$iniAno->toDateString(), $fimAno->toDateString()])
-        ->groupBy('ym')
-        ->orderBy('ym')
-        ->get();
-
-    return response()->json([
-        'ref' => [
-            'tz'        => $tz,
-            'agora'     => $now->toDateTimeString(),
-            'semana'    => ['inicio' => $iniSemana->toDateString(), 'fim' => $fimSemana->toDateString()],
-            'mes'       => ['inicio' => $iniMes->toDateString(),   'fim' => $fimMes->toDateString()],
-            'ano'       => ['inicio' => $iniAno->toDateString(),   'fim' => $fimAno->toDateString()],
-        ],
-        'contagens' => [
-            'semana' => $totalSemana,
-            'mes'    => $totalMes,
-            'ano'    => $totalAno,
-        ],
-        'series' => [
-            'semana_por_dia' => $semanaPorDia, // [{ dia: '2025-10-01', total: 3 }, ...]
-            'mes_por_dia'    => $mesPorDia,    // idem
-            'ano_por_mes'    => $anoPorMes,    // [{ ym: '2025-01', total: 10 }, ...]
-        ],
-    ]);
-}
-
+        return response()->json([
+            'contagens' => $contagens,
+            'series' => [
+                'semana_por_dia' => $semanaPorDia,
+                'mes_por_dia'    => $mesPorDia,
+                'ano_por_mes'    => $anoPorMes,
+            ],
+            'ref' => [
+                'tz'     => $tz,
+                'semana' => ['inicio' => $iniSemana, 'fim' => $fimSemana],
+                'mes'    => ['inicio' => $iniMes, 'fim' => $fimMes],
+                'ano'    => ['inicio' => $iniAno, 'fim' => $fimAno],
+            ],
+        ]);
+    }
     // POST /api/reunioes
     public function store(Request $req)
     {
@@ -365,14 +360,63 @@ class ReuniaoController extends Controller
 
         // Carrega participantes sem expor CPF
         $reuniao = Reuniao::with(['participantes' => function ($q) {
-                $q->select('id', 'reuniao_id', 'nome', 'email', 'papel');
-            }])
+            $q->select('id', 'reuniao_id', 'nome', 'email', 'papel');
+        }])
             ->findOrFail($id);
 
         return response()->json([
             'participantes' => $reuniao->participantes,
             'reuniao_id'    => $reuniao->id,
         ], Response::HTTP_OK);
+    }
+
+    public function checkCpf(Request $req)
+    {
+        $cpf = preg_replace('/\D/', '', (string) $req->input('cpf'));
+
+        if (!$this->cpfValido($cpf)) {
+            return response()->json(['ok' => false, 'reason' => 'invalid_format'], 422);
+        }
+
+        // existe em ao menos uma reunião?
+        $exists = ReuniaoParticipante::where('cpf', $cpf)->exists();
+
+        // (opcional) traga algumas reuniões para feedback amigável
+        $reunioes = [];
+        if ($exists) {
+            $reunioes = Reuniao::whereHas('participantes', fn($q) => $q->where('cpf', $cpf))
+                ->orderBy('data', 'desc')
+                ->limit(3)
+                ->get(['id', 'titulo', 'data']);
+        }
+
+        return response()->json([
+            'ok'      => true,
+            'exists'  => $exists,
+            'reunioes' => $reunioes,
+        ]);
+    }
+
+    /** Validação de CPF (dígitos verificadores) */
+    private function cpfValido(?string $cpf): bool
+    {
+        $cpf = preg_replace('/\D/', '', (string) $cpf);
+        if (strlen($cpf) !== 11) return false;
+        if (preg_match('/^(\d)\1{10}$/', $cpf)) return false;
+
+        $sum = 0;
+        for ($i = 0, $w = 10; $i < 9; $i++, $w--) $sum += (int)$cpf[$i] * $w;
+        $r = ($sum * 10) % 11;
+        if ($r == 10) $r = 0;
+        if ($r != (int)$cpf[9]) return false;
+
+        $sum = 0;
+        for ($i = 0, $w = 11; $i < 10; $i++, $w--) $sum += (int)$cpf[$i] * $w;
+        $r = ($sum * 10) % 11;
+        if ($r == 10) $r = 0;
+        if ($r != (int)$cpf[10]) return false;
+
+        return true;
     }
 
     // ===================== UTIL =====================
