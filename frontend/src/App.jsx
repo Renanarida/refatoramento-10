@@ -5,6 +5,8 @@ import ProtegerRoute from "./components/reunioes/ProtegerRoute.jsx";
 import Home from "./pages/Home";
 import Cadastrar from "./pages/Cadastrar";
 import Login from "./pages/Login";
+import ResetSenha from "./pages/ResetSenha.jsx";
+import NovaSenha from "./pages/NovaSenha.jsx";
 import ReunioesPage from "./pages/ReunioesPage";
 import Logout from "./pages/Logout";
 import Dashboard from "./pages/Dashboard";
@@ -25,6 +27,10 @@ function App() {
       <Route path="/cadastrar" element={<Cadastrar />} />
       <Route path="/login" element={<Login />} />
       <Route path="/participante" element={<ParticipanteCpf />} /> {/* página do CPF */}
+
+      <Route path="/reset-senha" element={<ResetSenha />} />
+      <Route path="/nova-senha" element={<NovaSenha />} />
+      
 
       {/* A partir daqui, tudo passa pelo MainLayout (Header + Sidebar) */}
       <Route element={<MainLayout />}>

@@ -49,7 +49,7 @@ export default function DashboardGraficos() {
       </div>
 
       {/* Semana atual */}
-      <div className="bg-white rounded-2xl p-4 shadow-md mb-8">
+      {/* <div className="bg-white rounded-2xl p-4 shadow-md mb-8">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Semana atual (por dia)</h3>
         <div style={{ width: "100%", height: 280 }}>
           <ResponsiveContainer>
@@ -65,10 +65,10 @@ export default function DashboardGraficos() {
         <p className="text-xs text-gray-500 mt-2">
           Janela: {dados?.ref?.semana?.inicio} a {dados?.ref?.semana?.fim} (TZ {dados?.ref?.tz})
         </p>
-      </div>
+      </div> */}
 
       {/* Mês atual */}
-      <div className="bg-white rounded-2xl p-4 shadow-md">
+      {/* <div className="bg-white rounded-2xl p-4 shadow-md">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">Mês atual (por dia)</h3>
         <div style={{ width: "100%", height: 280 }}>
           <ResponsiveContainer>
@@ -81,7 +81,7 @@ export default function DashboardGraficos() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </div> */}
 
       {err && <p className="mt-4 text-red-200">Erro: {err}</p>}
       {loading && <p className="mt-4 text-gray-200">Carregando…</p>}

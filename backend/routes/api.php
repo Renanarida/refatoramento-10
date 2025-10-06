@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\ReuniaoController;
+use App\Http\Controllers\PasswordResetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,6 +17,10 @@ use App\Http\Controllers\ReuniaoController;
 // ---------- AUTENTICAÇÃO & USUÁRIOS (públicas) ----------
 Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store'); // cadastro
 Route::post('/login', [AuthController::class, 'login']);                               // login
+
+// 🔐 RECUPERAÇÃO DE SENHA (públicas)
+Route::post('/forgot-password', [PasswordResetController::class, 'sendLink']); // envia e-mail com token
+Route::post('/reset-password', [PasswordResetController::class, 'reset']);     // redefine senha com token
 
 // ✅✅✅ CHECK CPF (PÚBLICA | fora de auth:sanctum e fora de cpf.participant)
 Route::post('/participante/check-cpf', [ReuniaoController::class, 'checkCpf'])

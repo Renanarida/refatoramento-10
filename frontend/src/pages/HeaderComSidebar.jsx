@@ -123,9 +123,9 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
           <NavLink to="/reunioes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
             🗓️ Reuniões
           </NavLink>
-          <NavLink to="/participantes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
+          {/* <NavLink to="/participantes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
             👥 Participantes
-          </NavLink>
+          </NavLink> */}
           <NavLink to="/configuracoes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
             ⚙️ Configurações
           </NavLink>
