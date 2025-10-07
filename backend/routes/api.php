@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // sessão
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me', [AuthController::class, 'updateMe']); // editar perfil (nome, email)
 
     // perfil: upload de avatar
     Route::post('/me/avatar', function (Request $request) {

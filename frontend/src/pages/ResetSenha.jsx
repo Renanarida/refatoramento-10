@@ -27,7 +27,7 @@ export default function ResetSenha() {
   }
 
   return (
-    <div className="d-flex justify-content-center align-items-center vh-100" style={{ backgroundColor: "#0b1aa5" }}>
+    <div className="d-flex justify-content-center align-items-center" style={{ backgroundColor: "#0b1aa5" }}>
       <div className="card p-4" style={{ width: 350 }}>
         <h3 className="mb-3">Redefinir senha</h3>
         <img src={logo} alt="Reset" className="mb-3 mx-auto d-block" style={{ width: "100%", borderRadius: 12 }} />

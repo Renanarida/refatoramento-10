@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, NavLink, Link, useLocation } from "react-router-dom";
-// import { useNavigate, Link, useLocation } from "react-router-dom";
-// import { doLogout } from "../services/Auth"; // <- minúsculo
+// import { doLogout } from "../services/Auth"; // <- se quiser usar, descomente e use
+import EditUserModal from "../components/reunioes/EditaUSerModal.jsx"; // ✅ case e extensão corrigidos
 import "../style/header-sidebar.css";
 import menuIcon from "../assets/menu.png";
 
@@ -9,6 +9,7 @@ const API = "http://localhost:8000/api";
 
 export default function HeaderComSidebar({ userName: userNameProp }) {
   const [open, setOpen] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false); // controla o modal
   const [me, setMe] = useState(null);            // dados do usuário autenticado
   const [busy, setBusy] = useState(false);       // estado de upload
   const fileRef = useRef(null);                  // input de arquivo
@@ -27,27 +28,29 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
 
   const userName = me?.name || userNameFromStorage;
 
+  // fecha sidebar quando troca de rota
   useEffect(() => { setOpen(false); }, [location.pathname]);
 
-  // carrega /api/me para descobrir avatar_url (e nome, se quiser)
+  // carrega /api/me
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
     fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
-        setMe(data);
-        if (data?.name) localStorage.setItem("user_name", data.name);
+        setMe(data?.user || data || null);
+        const nome = (data?.user?.name ?? data?.name);
+        if (nome) localStorage.setItem("user_name", nome);
       })
-      .catch(() => { });
+      .catch(() => { /* silencioso */ });
   }, []);
 
   const toggle = () => setOpen((v) => !v);
 
-  // usa o helper (faz POST /logout, limpa storage e navega)
-  const handleLogout = () => {
-    doLogout(navigate);
-  };
+  // 🔒 se quiser usar logout por função, descomente o import e esta função
+  // const handleLogout = () => {
+  //   doLogout(navigate);
+  // };
 
   const initials = (userName || "")
     .split(" ")
@@ -91,8 +94,14 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
       alert("Não foi possível enviar a imagem.");
     } finally {
       setBusy(false);
-      e.target.value = ""; // reseta input para permitir mesmo arquivo de novo
+      e.target.value = ""; // reseta input
     }
+  };
+
+  // 👉 abre modal e fecha sidebar
+  const openEditUser = () => {
+    setShowEditUser(true);
+    setOpen(false);
   };
 
   return (
@@ -108,11 +117,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         <div className="hsd-sidebar__header">
           <span className="hsd-brand">Reuniões</span>
           <button className="hsd-icon-btn" onClick={() => setOpen(false)} aria-label="Fechar menu">
-            <img
-              className="menu-icon"
-              src="/menu.png"
-              alt="menu"
-            />
+            <img className="menu-icon" src="/menu.png" alt="menu" />
           </button>
         </div>
 
@@ -120,18 +125,23 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
           <NavLink to="/dashboard" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
             🏠 Dashboard
           </NavLink>
+
           <NavLink to="/reunioes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
             🗓️ Reuniões
           </NavLink>
-          {/* <NavLink to="/participantes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
-            👥 Participantes
-          </NavLink> */}
+
+          {/* ✔️ usar button para abrir o modal, não NavLink para "#" */}
+          <button type="button" onClick={openEditUser} className="hsd-nav__link">
+            ✏️ Editar Usuário
+          </button>
+
           <NavLink to="/configuracoes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
             ⚙️ Configurações
           </NavLink>
         </nav>
 
         <div className="hsd-sidebar__footer">
+          {/* Se quiser usar função de logout, troque por onClick={handleLogout} */}
           <Link to="/logout" className="hsd-logout-btn btn btn-danger w-100 d-block">
             Sair
           </Link>
@@ -167,10 +177,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
                 src={me.avatar_url}
                 alt="avatar"
                 className="hsd-avatar-img"
-                style={{
-                  width: 28, height: 28, borderRadius: "50%", objectFit: "cover",
-                  marginRight: 8
-                }}
+                style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", marginRight: 8 }}
               />
             ) : (
               <div className="hsd-avatar" aria-hidden="true">{initials || "U"}</div>
@@ -190,6 +197,26 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
           </div>
         </div>
       </header>
+
+      {/* Modal de edição de usuário - agora com user e onSaved */}
+      <EditUserModal
+        open={showEditUser}
+        onClose={() => setShowEditUser(false)}
+        user={me}
+        onSaved={async () => {
+          try {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+            const r = await fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } });
+            if (r.ok) {
+              const data = await r.json();
+              setMe(data?.user || data || null);
+              const nome = (data?.user?.name ?? data?.name);
+              if (nome) localStorage.setItem("user_name", nome);
+            }
+          } catch {}
+        }}
+      />
 
       {/* espaçador para o conteúdo não ficar por baixo do header fixo */}
       <div className="hsd-header-spacer" />

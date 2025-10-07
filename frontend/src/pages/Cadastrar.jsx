@@ -51,7 +51,7 @@ const Cadastrar = () => {
 
   return (
     <div
-      className="d-flex justify-content-center align-items-center vh-100"
+      className="d-flex justify-content-center align-items-center"
       style={{ backgroundColor: "#0b1aa5" }} // azul do print
     >
       <div className="card p-4" style={{ width: 350 }}>

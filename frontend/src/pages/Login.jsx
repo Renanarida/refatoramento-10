@@ -71,7 +71,7 @@ const Login = () => {
       className="d-flex justify-content-center align-items-center"
       style={{ backgroundColor: "#f8f9fa" }}
     >
-      <div className="card p-4" style={{ width: "350px" }}>
+      <div className="card p-4" style={{ width: "350px", borderRadius: "12px", border: "1px solid #ccc" }}>
         <h3 className="mb-3">Login</h3>
         <img className="img-login mb-3 mx-auto d-block" src={logo} alt="Login" />
 
