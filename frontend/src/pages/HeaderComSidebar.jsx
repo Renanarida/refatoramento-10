@@ -122,15 +122,14 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         </div>
 
         <nav className="hsd-nav">
-          <NavLink to="/dashboard" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
-            🏠 Dashboard
-          </NavLink>
-
           <NavLink to="/reunioes" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
             🗓️ Reuniões
           </NavLink>
 
-          {/* ✔️ usar button para abrir o modal, não NavLink para "#" */}
+          <NavLink to="/dashboard" className={({ isActive }) => `hsd-nav__link ${isActive ? "hsd-nav__link--active" : ""}`}>
+            🏠 Dashboard
+          </NavLink>
+
           <button type="button" onClick={openEditUser} className="hsd-nav__link">
             ✏️ Editar Usuário
           </button>
@@ -214,7 +213,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
               const nome = (data?.user?.name ?? data?.name);
               if (nome) localStorage.setItem("user_name", nome);
             }
-          } catch {}
+          } catch { }
         }}
       />
 

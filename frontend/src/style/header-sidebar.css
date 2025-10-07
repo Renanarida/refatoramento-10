@@ -253,6 +253,47 @@
 .rt-btn--primary { background: #2563eb; color: #fff; }
 .rt-btn--primary:hover { filter: brightness(1.05); }
 
+/* --- Sidebar links: âncoras e botões devem parecer IGUAIS --- */
+.hsd-nav .hsd-nav__link {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  padding: .5rem .75rem;
+  color: #e5e7eb;
+  text-decoration: none;
+  border-radius: .5rem;
+  background: transparent;
+}
+
+/* reset específico para BUTTON com classe .hsd-nav__link */
+.hsd-nav button.hsd-nav__link {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* hover/active iguais para ambos */
+.hsd-nav .hsd-nav__link:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.hsd-nav .hsd-nav__link--active {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+}
+
+/* tira aquele foco feio default do button */
+.hsd-nav button.hsd-nav__link:focus-visible,
+.hsd-nav a.hsd-nav__link:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: .5rem;
+}
+
 /* animações */
 @keyframes rt-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes rt-pop  { from { transform: translateY(6px) scale(.98); opacity: .8 }
