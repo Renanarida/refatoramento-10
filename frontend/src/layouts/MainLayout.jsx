@@ -1,18 +1,17 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
-import HeaderComSidebar from "../pages/HeaderComSidebar";
-import "../style/main-layout.css";
-
+import { Box, Container } from "@chakra-ui/react";
+import HeaderComSidebar from "../pages/HeaderComSidebar"; // pode migrar p/ Chakra depois
 
 export default function MainLayout() {
   return (
-    <div className="app-shell">
+    <Box minH="100vh" bg="white">
       <HeaderComSidebar />
-      <main className="app-content">
-        <div className="app-container">
+      <Box as="main" py={6}>
+        <Container maxW="6xl">
           <Outlet />
-        </div>
-      </main>
-    </div>
+        </Container>
+      </Box>
+    </Box>
   );
 }
