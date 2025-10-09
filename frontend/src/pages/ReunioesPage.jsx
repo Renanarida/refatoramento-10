@@ -1,9 +1,8 @@
-// src/pages/ReunioesPage.jsx
 import { useState } from "react";
 import { VStack, Box } from "@chakra-ui/react";
 import CardsReunioes from "../components/reunioes/CardsReunioes";
 import ReunioesTable from "../components/reunioes/ReunioesTable";
-import ModalReuniao from "../components/reunioes/ModalReuniao";
+import ModalReuniao from "../components/reunioes/ModalReuniao"; // precisa estar migrado p/ Dialog v3 também
 
 export default function ReunioesPage() {
   const [showModal, setShowModal] = useState(false);

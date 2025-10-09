@@ -1,7 +1,7 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import { Box, Container } from "@chakra-ui/react";
-import HeaderComSidebar from "../pages/HeaderComSidebar"; // pode migrar p/ Chakra depois
+import HeaderComSidebar from "../pages/HeaderComSidebar";
 
 export default function MainLayout() {
   return (

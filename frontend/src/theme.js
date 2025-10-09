@@ -1,37 +1,40 @@
-import { extendTheme } from "@chakra-ui/react";
+// src/theme.js
+import { createSystem, defaultConfig } from "@chakra-ui/react";
 
-const theme = extendTheme({
-  config: {
-    initialColorMode: "light", // 👈 muda para light
-    useSystemColorMode: false,
-  },
-  colors: {
-    brand: {
-      50: "#ffffff",
-      100: "#f7f7f7",
-      200: "#ededed",
-      300: "#e2e2e2",
-      400: "#cccccc",
-      500: "#999999",
-      600: "#666666",
-      700: "#333333",
-      800: "#222222",
-      900: "#111111",
+export const system = createSystem(defaultConfig, {
+  theme: {
+    config: {
+      initialColorMode: "light",
+      useSystemColorMode: false,
     },
-  },
-  styles: {
-    global: {
+    tokens: {
+      colors: {
+        brand: {
+          50:  { value: "#ffffff" },
+          100: { value: "#f7f7f7" },
+          200: { value: "#ededed" },
+          300: { value: "#e2e2e2" },
+          400: { value: "#cccccc" },
+          500: { value: "#999999" },
+          600: { value: "#666666" },
+          700: { value: "#333333" },
+          800: { value: "#222222" },
+          900: { value: "#111111" },
+        },
+      },
+    },
+    globalCss: {
       body: {
-        bg: "white", // 👈 fundo geral branco
-        color: "gray.800", // texto escuro
+        backgroundColor: "white",
+        color: "gray.800",
+      },
+    },
+    recipes: {
+      Button: {
+        base: {
+          colorPalette: "gray",
+        },
       },
     },
   },
-  components: {
-    Button: {
-      defaultProps: { colorScheme: "gray" }, // botões em cinza neutro
-    },
-  },
 });
-
-export default theme;

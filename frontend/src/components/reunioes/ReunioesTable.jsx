@@ -5,14 +5,21 @@ import {
   Card, CardHeader, CardBody, CardFooter,
   Heading, Text,
   Stack, HStack, VStack,
-  Input, InputGroup, InputLeftElement,
+  Input, InputGroup,
   Select, Button,
-  Table, Thead, Tbody, Tr, Th, Td,
-  Alert, AlertIcon, Spinner, Tag,
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter,
-  SimpleGrid, Box, useToast
+  Alert, AlertTitle, AlertDescription, Spinner, Tag,
+  // v3: Dialog no lugar de Modal
+  DialogRoot, DialogBackdrop, DialogContent,
+  DialogHeader, DialogTitle, DialogBody, DialogFooter,
+  SimpleGrid, Box
 } from "@chakra-ui/react";
-import { FiSearch } from "react-icons/fi"; // ✅ usando react-icons
+// Tabela (usaremos tags nativas dentro de <Table>)
+import { Table } from "@chakra-ui/react";
+import { FiSearch } from "react-icons/fi";
+// Removido useToast — usaremos o toaster global do Chakra v3
+import { toaster } from "../../components/ui/toaster.jsx";
+
+// import { useToast } from "@chakra-ui/react";
 
 const EV_SALVA = "reuniao:salva";
 
@@ -22,22 +29,34 @@ function normalizeCpf(v = "") {
 
 function ModalParticipantes({ open, onClose, reuniao, loading, error, participantes }) {
   return (
-    <Modal isOpen={open} onClose={onClose} size="xl" isCentered scrollBehavior="inside">
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>
-          Participantes {reuniao ? `— ${reuniao.titulo ?? ""}` : ""}
-        </ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
+    <DialogRoot
+      open={open}
+      onOpenChange={(e) => {
+        if (!e.open) onClose?.();
+      }}
+    >
+      <DialogBackdrop />
+      <DialogContent size="xl">
+        <DialogHeader>
+          <DialogTitle>
+            Participantes {reuniao ? `— ${reuniao.titulo ?? ""}` : ""}
+          </DialogTitle>
+        </DialogHeader>
+
+        <DialogBody>
           {loading && (
             <HStack py={6} justify="center">
               <Spinner /> <Text>Carregando…</Text>
             </HStack>
           )}
+
           {error && !loading && (
-            <Alert status="error" mb={4}><AlertIcon />{error}</Alert>
+            <Alert status="error" mb={4}>
+              <AlertTitle>Erro</AlertTitle>
+              <AlertDescription>{String(error)}</AlertDescription>
+            </Alert>
           )}
+
           {!loading && !error && (
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
               {Array.isArray(participantes) && participantes.length > 0 ? (
@@ -47,7 +66,8 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
                       <VStack align="start" spacing={1}>
                         <Text fontWeight="semibold">{p.nome || "(sem nome)"}</Text>
                         <Text fontSize="sm" color="gray.500">{p.email || "-"}</Text>
-                        <Tag mt={2} colorScheme="brand">{p.papel || "participante"}</Tag>
+                        {/* v3: colorPalette */}
+                        <Tag mt={2} colorPalette="brand">{p.papel || "participante"}</Tag>
                       </VStack>
                     </CardBody>
                   </Card>
@@ -57,12 +77,13 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
               )}
             </SimpleGrid>
           )}
-        </ModalBody>
-        <ModalFooter>
+        </DialogBody>
+
+        <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Fechar</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
   );
 }
 
@@ -92,14 +113,14 @@ export default function ReunioesTable({
   const [sortKey, setSortKey] = useState("data");
   const [sortDir, setSortDir] = useState("asc");
 
-  // Modal
+  // Dialog
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState(null);
   const [modalParticipantes, setModalParticipantes] = useState([]);
   const [modalReuniao, setModalReuniao] = useState(null);
 
-  const toast = useToast();
+  // const toaster = useToast();
 
   const endpoint =
     isAdmin || isUser
@@ -196,36 +217,47 @@ export default function ReunioesTable({
 
   const excluir = async (id) => {
     if (!isAdmin) {
-      toast({ title: "Permitido apenas para administradores.", status: "warning" });
+      toaster.create({
+        title: "Permitido apenas para administradores.",
+        type: "warning",
+      });
       return;
     }
+
     if (!confirm("Tem certeza que deseja excluir esta reunião?")) return;
+
     try {
       await API.delete(`/reunioes/${id}`);
       fetchData();
-      toast({ title: "Reunião excluída.", status: "success" });
+      toaster.create({
+        title: "Reunião excluída.",
+        type: "success",
+      });
     } catch (e) {
-      toast({
+      toaster.create({
         title: "Erro ao excluir",
         description: e?.response?.data?.message || e.message,
-        status: "error",
+        type: "error",
       });
     }
-  };
+  }; // <- FALTAVA esse fechamento
 
   const headerSort = (key, label) => (
-    <Th
+    <Box
+      as="th"
       onClick={() => ordenar(key)}
       title="Clique para ordenar"
       cursor="pointer"
       whiteSpace="nowrap"
       userSelect="none"
+      px={3}
+      py={2}
     >
       {label} {sortKey === key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
-    </Th>
+    </Box>
   );
 
-  // Abre modal e busca participantes conforme o modo
+  // Abre dialog e busca participantes conforme o modo
   const abrirParticipantes = async (reuniao) => {
     setModalReuniao(reuniao);
     setModalOpen(true);
@@ -271,9 +303,9 @@ export default function ReunioesTable({
             <Box flex="1" />
 
             <InputGroup maxW="320px">
-              <InputLeftElement pointerEvents="none">
-                <FiSearch /> {/* ✅ trocado aqui */}
-              </InputLeftElement>
+              {/* <InputLeftElement pointerEvents="none">
+                <FiSearch />
+              </InputLeftElement> */}
               <Input
                 placeholder="Título/descrição…"
                 value={q}
@@ -303,7 +335,7 @@ export default function ReunioesTable({
             </Select>
 
             {isAdmin && (
-              <Button onClick={onNova} colorScheme="brand">Cadastrar</Button>
+              <Button onClick={onNova} colorPalette="brand">Cadastrar</Button>
             )}
           </Stack>
         </VStack>
@@ -315,71 +347,84 @@ export default function ReunioesTable({
             <Spinner /> <Text>Carregando…</Text>
           </HStack>
         )}
+
         {err && !loading && (
           <Box p={4}>
-            <Alert status="error"><AlertIcon />Erro ao carregar: {String(err)}</Alert>
+            <Alert status="error">
+              <AlertTitle>Erro ao carregar</AlertTitle>
+              <AlertDescription>{String(err)}</AlertDescription>
+            </Alert>
           </Box>
         )}
+
         {!loading && !err && (
           <Box overflowX="auto">
             <Table size="sm" variant="simple">
-              <Thead>
-                <Tr>
+              <thead>
+                <tr>
                   {headerSort("titulo", "Título")}
                   {headerSort("descricao", "Descrição")}
                   {headerSort("data", "Data")}
                   {headerSort("hora", "Hora")}
                   {headerSort("local", "Local")}
                   {showActions && (
-                    <Th isNumeric w={isAdmin ? "220px" : "180px"}>Ações</Th>
+                    <Box
+                      as="th"
+                      textAlign="right"
+                      px={3}
+                      py={2}
+                      width={isAdmin ? "220px" : "180px"}
+                    >
+                      Ações
+                    </Box>
                   )}
-                </Tr>
-              </Thead>
-              <Tbody>
+                </tr>
+              </thead>
+              <tbody>
                 {itensOrdenados.length === 0 ? (
-                  <Tr>
-                    <Td colSpan={showActions ? 6 : 5}>
+                  <tr>
+                    <td colSpan={showActions ? 6 : 5}>
                       <Text align="center" py={6} color="gray.500">Nenhuma reunião encontrada.</Text>
-                    </Td>
-                  </Tr>
+                    </td>
+                  </tr>
                 ) : (
                   itensOrdenados.map((r) => (
-                    <Tr key={r.id}>
-                      <Td>{r.titulo}</Td>
-                      <Td>
+                    <tr key={r.id}>
+                      <td>{r.titulo}</td>
+                      <td>
                         <Text noOfLines={1} title={r.descricao || ""} maxW="360px">
                           {r.descricao || "-"}
                         </Text>
-                      </Td>
-                      <Td>{r.data || ""}</Td>
-                      <Td>{r.hora || ""}</Td>
-                      <Td>{r.local || ""}</Td>
+                      </td>
+                      <td>{r.data || ""}</td>
+                      <td>{r.hora || ""}</td>
+                      <td>{r.local || ""}</td>
 
                       {showActions && (
-                        <Td isNumeric>
+                        <td>
                           <HStack justify="end" spacing={2}>
                             {isAdmin && (
                               <>
-                                <Button size="xs" colorScheme="yellow" onClick={() => onEditar(r)}>
+                                <Button size="xs" colorPalette="yellow" onClick={() => onEditar(r)}>
                                   Editar
                                 </Button>
-                                <Button size="xs" colorScheme="red" onClick={() => excluir(r.id)}>
+                                <Button size="xs" colorPalette="red" onClick={() => excluir(r.id)}>
                                   Excluir
                                 </Button>
                               </>
                             )}
                             {(isUser || isAdmin || isParticipant) && (
-                              <Button size="xs" colorScheme="brand" onClick={() => abrirParticipantes(r)}>
+                              <Button size="xs" colorPalette="brand" onClick={() => abrirParticipantes(r)}>
                                 Ver participantes
                               </Button>
                             )}
                           </HStack>
-                        </Td>
+                        </td>
                       )}
-                    </Tr>
+                    </tr>
                   ))
                 )}
-              </Tbody>
+              </tbody>
             </Table>
           </Box>
         )}

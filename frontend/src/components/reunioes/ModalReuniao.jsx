@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import API from "../../services/api"; // usa o client axios configurado
-import { useAuth } from "../../services/useAuth"; // 👈 pega isAdmin
-
-import ParticipantesCards from "./ParticipantesCards";      // mesma pasta, nome igualzinho
-import "../../style/participantes-cards.css";               // CSS está em src/style
+import API from "../../services/api";
+import { useAuth } from "../../services/useAuth";
+import ParticipantesCards from "./ParticipantesCards";
+import {
+  DialogRoot, DialogBackdrop, DialogContent,
+  DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogCloseTrigger,
+  Input, Textarea, Button,
+  VStack, HStack, Box
+} from "@chakra-ui/react";
 
 const EV_SALVA = "reuniao:salva";
 
@@ -23,9 +26,17 @@ const maskCpf = (v) => {
   return out;
 };
 
+function Label({ children, htmlFor }) {
+  return (
+    <Box as="label" htmlFor={htmlFor} fontWeight="semibold" mb={2} display="block">
+      {children}
+    </Box>
+  );
+}
+
 export default function ModalReuniao({ registro, onClose, onSaved }) {
-  const { isAdmin } = useAuth();              // 👈 define permissões
-  const isEditing = !!registro?.id;           // 👈 modo edição?
+  const { isAdmin } = useAuth();
+  const isEditing = !!registro?.id;
 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -38,13 +49,11 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
   });
   const [errors, setErrors] = useState(null);
 
-  // ---- util ----
   function normalizarHora(hora) {
     if (!hora) return "";
-    return hora.slice(0, 5); // garante HH:MM (corta :SS se vier)
+    return hora.slice(0, 5);
   }
 
-  // Pré-preenche quando vier um registro para edição
   useEffect(() => {
     if (registro) {
       setForm({
@@ -57,7 +66,7 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
           nome: p?.nome ?? "",
           email: p?.email ?? "",
           papel: p?.papel ?? "",
-          cpf: maskCpf(p?.cpf ?? ""), // 👈 mostra mascarado na edição
+          cpf: maskCpf(p?.cpf ?? ""),
         })),
       });
     } else {
@@ -74,12 +83,11 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
   }, [registro]);
 
   const salvar = async () => {
-    if (!isAdmin) return; // 👈 trava ação para não-admin
+    if (!isAdmin) return;
     try {
       setSaving(true);
       setErrors(null);
 
-      // Validação rápida no front (evita 422 bobo)
       if (!form.titulo?.trim()) {
         setErrors({ titulo: ["O título é obrigatório."] });
         setSaving(false);
@@ -96,22 +104,20 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
         return;
       }
 
-      // Monta payload com hora normalizada
       const payload = {
         titulo: form.titulo,
         descricao: form.descricao || null,
-        data: form.data,                                  // YYYY-MM-DD
-        hora: form.hora ? normalizarHora(form.hora) : null, // HH:MM
+        data: form.data,
+        hora: form.hora ? normalizarHora(form.hora) : null,
         local: form.local || null,
       };
 
-      // só envia participantes se houver algo
       if (Array.isArray(form.participantes) && form.participantes.length > 0) {
         payload.participantes = form.participantes.map((p) => ({
           nome: p?.nome ?? "",
           email: p?.email ?? "",
           papel: p?.papel ?? "",
-          cpf: p?.cpf ? onlyDigits(p.cpf) : null, // 👈 só dígitos para o backend
+          cpf: p?.cpf ? onlyDigits(p.cpf) : null,
         }));
       }
 
@@ -122,8 +128,8 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
       }
 
       window.dispatchEvent(new Event(EV_SALVA));
-      onSaved && onSaved();
-      onClose && onClose();
+      onSaved?.();
+      onClose?.();
     } catch (e) {
       const v = e?.response?.status === 422 ? e?.response?.data?.errors : null;
       if (v) setErrors(v);
@@ -134,15 +140,15 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
   };
 
   const excluir = async () => {
-    if (!isAdmin || !isEditing) return; // 👈 trava ação
+    if (!isAdmin || !isEditing) return;
     if (!confirm("Tem certeza que deseja excluir esta reunião?")) return;
     try {
       setSaving(true);
       setErrors(null);
       await API.delete(`/reunioes/${registro.id}`);
       window.dispatchEvent(new Event(EV_SALVA));
-      onSaved && onSaved();
-      onClose && onClose();
+      onSaved?.();
+      onClose?.();
     } catch (e) {
       alert("Erro ao excluir: " + (e?.response?.data?.message || e.message));
     } finally {
@@ -150,137 +156,128 @@ export default function ModalReuniao({ registro, onClose, onSaved }) {
     }
   };
 
-  // Render
-  return createPortal(
-    <>
-      {/* Backdrop */}
-      <div className="modal-backdrop fade show" style={{ zIndex: 1040 }} onClick={onClose} />
-      {/* Modal */}
-      <div className="modal fade show" style={{ display: "block", zIndex: 1055 }} role="dialog" aria-modal="true">
-        <div className="modal-dialog modal-lg">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">{isEditing ? "Editar Reunião" : "Nova Reunião"}</h5>
-              <button className="btn-close" onClick={onClose} />
-            </div>
+  return (
+    <DialogRoot
+      open={true}
+      onOpenChange={(e) => {
+        if (!e.open) onClose?.();
+      }}
+    >
+      <DialogBackdrop />
+      <DialogContent size="xl">
+        <DialogCloseTrigger />
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Editar Reunião" : "Nova Reunião"}</DialogTitle>
+        </DialogHeader>
 
-            <div className="modal-body">
-              {/* Erros globais/validação */}
-              {errors && (
-                <div className="alert alert-danger">
-                  <ul className="m-0 ps-3">
-                    {Object.entries(errors).map(([field, msgs]) =>
-                      (msgs || []).map((m, i) => <li key={field + i}>{m}</li>)
-                    )}
-                  </ul>
-                </div>
-              )}
+        <DialogBody>
+          {errors && (
+            <Box borderWidth="1px" borderRadius="md" p={3} bg="red.50" mb={4}>
+              <ul style={{ margin: 0, paddingLeft: "1rem" }}>
+                {Object.entries(errors).map(([field, msgs]) =>
+                  (msgs || []).map((m, i) => <li key={field + i}>{m}</li>)
+                )}
+              </ul>
+            </Box>
+          )}
 
-              <div className="row g-3">
-                <div className="col-12">
-                  <label className="form-label">Título</label>
-                  <input
-                    className={`form-control ${errors?.titulo ? "is-invalid" : ""}`}
-                    value={form.titulo}
-                    onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                    disabled={!isAdmin}
-                  />
-                </div>
+          <VStack align="stretch" spacing={4}>
+            <Box opacity={isAdmin ? 1 : 0.7} pointerEvents={isAdmin ? "auto" : "none"}>
+              <Label htmlFor="titulo">Título</Label>
+              <Input
+                id="titulo"
+                value={form.titulo}
+                onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+              />
+            </Box>
 
-                <div className="col-12">
-                  <label className="form-label">Descrição</label>
-                  <textarea
-                    className="form-control"
-                    rows={3}
-                    value={form.descricao}
-                    onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                    disabled={!isAdmin}
-                  />
-                </div>
+            <Box opacity={isAdmin ? 1 : 0.7} pointerEvents={isAdmin ? "auto" : "none"}>
+              <Label htmlFor="descricao">Descrição</Label>
+              <Textarea
+                id="descricao"
+                rows={3}
+                value={form.descricao}
+                onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+              />
+            </Box>
 
-                <div className="col-6">
-                  <label className="form-label">Data</label>
-                  <input
-                    type="date"
-                    className={`form-control ${errors?.data ? "is-invalid" : ""}`}
-                    value={form.data}
-                    onChange={(e) => setForm({ ...form, data: e.target.value })}
-                    disabled={!isAdmin}
-                  />
-                </div>
+            <HStack align="start" spacing={4}>
+              <Box flex="1" opacity={isAdmin ? 1 : 0.7} pointerEvents={isAdmin ? "auto" : "none"}>
+                <Label htmlFor="data">Data</Label>
+                <Input
+                  id="data"
+                  type="date"
+                  value={form.data}
+                  onChange={(e) => setForm({ ...form, data: e.target.value })}
+                />
+              </Box>
 
-                <div className="col-6">
-                  <label className="form-label">Hora</label>
-                  <input
-                    type="time"
-                    step="60"
-                    className={`form-control ${errors?.hora ? "is-invalid" : ""}`}
-                    value={form.hora}
-                    onChange={(e) => setForm({ ...form, hora: normalizarHora(e.target.value) })}
-                    disabled={!isAdmin}
-                  />
-                </div>
+              <Box flex="1" opacity={isAdmin ? 1 : 0.7} pointerEvents={isAdmin ? "auto" : "none"}>
+                <Label htmlFor="hora">Hora</Label>
+                <Input
+                  id="hora"
+                  type="time"
+                  step="60"
+                  value={form.hora}
+                  onChange={(e) =>
+                    setForm({ ...form, hora: normalizarHora(e.target.value) })
+                  }
+                />
+              </Box>
+            </HStack>
 
-                <div className="col-12">
-                  <label className="form-label">Local</label>
-                  <input
-                    className="form-control"
-                    value={form.local}
-                    onChange={(e) => setForm({ ...form, local: e.target.value })}
-                    disabled={!isAdmin}
-                  />
-                </div>
+            <Box opacity={isAdmin ? 1 : 0.7} pointerEvents={isAdmin ? "auto" : "none"}>
+              <Label htmlFor="local">Local</Label>
+              <Input
+                id="local"
+                value={form.local}
+                onChange={(e) => setForm({ ...form, local: e.target.value })}
+              />
+            </Box>
 
-                {/* Participantes (cards) */}
-                <div className="col-12">
-                  <ParticipantesCards
-                    value={form.participantes}
-                    onChange={(arr) => setForm((f) => ({ ...f, participantes: arr }))}
-                    canEdit={isAdmin}
-                  />
-                </div>
-              </div>
-            </div>
+            <Box>
+              <ParticipantesCards
+                value={form.participantes}
+                onChange={(arr) => setForm((f) => ({ ...f, participantes: arr }))}
+                canEdit={isAdmin}
+              />
+            </Box>
+          </VStack>
+        </DialogBody>
 
-            <div className="modal-footer">
-              {/* Não-admin: só fecha */}
-              {!isAdmin && (
-                <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
-                  Fechar
-                </button>
-              )}
+        <DialogFooter justifyContent="space-between">
+          {!isAdmin && (
+            <Button onClick={onClose} variant="outline">
+              Fechar
+            </Button>
+          )}
 
-              {/* Admin + Novo */}
-              {isAdmin && !isEditing && (
-                <>
-                  <button className="btn btn-primary" onClick={salvar} disabled={saving}>
-                    {saving ? "Salvando..." : "Adicionar"}
-                  </button>
-                  <button className="btn btn-outline-secondary" onClick={onClose} disabled={saving}>
-                    Cancelar
-                  </button>
-                </>
-              )}
+          {isAdmin && !isEditing && (
+            <HStack>
+              <Button onClick={salvar} isLoading={saving}>
+                Adicionar
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+            </HStack>
+          )}
 
-              {/* Admin + Edição */}
-              {isAdmin && isEditing && (
-                <>
-                  <button className="btn btn-primary" onClick={salvar} disabled={saving}>
-                    {saving ? "Salvando..." : "Salvar Reunião"}
-                  </button>
-                  <button className="btn btn-danger" onClick={excluir} disabled={saving}>
-                    {saving ? "Excluindo..." : "Excluir Reunião"}
-                  </button>
-                  <button className="btn btn-outline-secondary" onClick={onClose} disabled={saving}>
-                    Cancelar
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>,
-    document.body
+          {isAdmin && isEditing && (
+            <HStack spacing={3}>
+              <Button onClick={salvar} isLoading={saving}>
+                Salvar
+              </Button>
+              <Button colorPalette="red" onClick={excluir} isLoading={saving}>
+                Excluir
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+            </HStack>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
   );
 }
