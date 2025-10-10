@@ -1,7 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import API from "../../services/api";
 import { useAuth } from "../../services/useAuth";
-import { maskCpf, maskTelefone } from "../../utils/masks";
+import {
+  Card, CardHeader, CardBody, CardFooter,
+  Heading, Text,
+  Stack, HStack, VStack,
+  Input, InputGroup,
+  Select, Button,
+  Alert, AlertTitle, AlertDescription, Spinner, Tag,
+  // v3: Dialog no lugar de Modal
+  DialogRoot, DialogBackdrop, DialogContent,
+  DialogHeader, DialogTitle, DialogBody, DialogFooter,
+  SimpleGrid, Box
+} from "@chakra-ui/react";
+// Tabela (usaremos tags nativas dentro de <Table>)
+import { Table } from "@chakra-ui/react";
+import { FiSearch } from "react-icons/fi";
+// Removido useToast — usaremos o toaster global do Chakra v3
+import { toaster } from "../../components/ui/toaster.jsx";
+
+// import { useToast } from "@chakra-ui/react";
 
 const EV_SALVA = "reuniao:salva";
 
@@ -10,57 +28,62 @@ function normalizeCpf(v = "") {
 }
 
 function ModalParticipantes({ open, onClose, reuniao, loading, error, participantes }) {
-  if (!open) return null;
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100"
-      style={{ background: "rgba(0,0,0,0.35)", zIndex: 1050 }}
-      onClick={onClose}
+    <DialogRoot
+      open={open}
+      onOpenChange={(e) => {
+        if (!e.open) onClose?.();
+      }}
     >
-      <div
-        className="bg-white rounded shadow p-3"
-        style={{
-          width: "min(800px, 95vw)",
-          maxHeight: "85vh",
-          overflow: "auto",
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="d-flex align-items-center justify-content-between mb-2">
-          <h5 className="m-0">
+      <DialogBackdrop />
+      <DialogContent size="xl">
+        <DialogHeader>
+          <DialogTitle>
             Participantes {reuniao ? `— ${reuniao.titulo ?? ""}` : ""}
-          </h5>
-          <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>
-            Fechar
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
-        {loading && <div className="text-muted py-3">Carregando…</div>}
-        {error && !loading && <div className="alert alert-danger">{error}</div>}
+        <DialogBody>
+          {loading && (
+            <HStack py={6} justify="center">
+              <Spinner /> <Text>Carregando…</Text>
+            </HStack>
+          )}
 
-        {!loading && !error && (
-          <div className="row g-3">
-            {Array.isArray(participantes) && participantes.length > 0 ? (
-              participantes.map((p) => (
-                <div key={p.id ?? `${p.nome}-${p.email}-${p.papel}`} className="col-12 col-md-6">
-                  <div className="border rounded p-3 h-100">
-                    <div className="fw-semibold">{p.nome || "(sem nome)"}</div>
-                    <div className="text-muted small">{p.email || "-"}</div>
-                    <div className="badge bg-secondary mt-2">{p.papel || "participante"}</div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-muted py-3">Nenhum participante encontrado.</div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+          {error && !loading && (
+            <Alert status="error" mb={4}>
+              <AlertTitle>Erro</AlertTitle>
+              <AlertDescription>{String(error)}</AlertDescription>
+            </Alert>
+          )}
+
+          {!loading && !error && (
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              {Array.isArray(participantes) && participantes.length > 0 ? (
+                participantes.map((p) => (
+                  <Card key={p.id ?? `${p.nome}-${p.email}-${p.papel}`} variant="outline">
+                    <CardBody>
+                      <VStack align="start" spacing={1}>
+                        <Text fontWeight="semibold">{p.nome || "(sem nome)"}</Text>
+                        <Text fontSize="sm" color="gray.500">{p.email || "-"}</Text>
+                        {/* v3: colorPalette */}
+                        <Tag mt={2} colorPalette="brand">{p.papel || "participante"}</Tag>
+                      </VStack>
+                    </CardBody>
+                  </Card>
+                ))
+              ) : (
+                <Box py={3} color="gray.500">Nenhum participante encontrado.</Box>
+              )}
+            </SimpleGrid>
+          )}
+        </DialogBody>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
   );
 }
 
@@ -90,12 +113,14 @@ export default function ReunioesTable({
   const [sortKey, setSortKey] = useState("data");
   const [sortDir, setSortDir] = useState("asc");
 
-  // Modal
+  // Dialog
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState(null);
   const [modalParticipantes, setModalParticipantes] = useState([]);
   const [modalReuniao, setModalReuniao] = useState(null);
+
+  // const toaster = useToast();
 
   const endpoint =
     isAdmin || isUser
@@ -192,30 +217,47 @@ export default function ReunioesTable({
 
   const excluir = async (id) => {
     if (!isAdmin) {
-      alert("Ação permitida apenas para administradores.");
+      toaster.create({
+        title: "Permitido apenas para administradores.",
+        type: "warning",
+      });
       return;
     }
+
     if (!confirm("Tem certeza que deseja excluir esta reunião?")) return;
+
     try {
       await API.delete(`/reunioes/${id}`);
       fetchData();
+      toaster.create({
+        title: "Reunião excluída.",
+        type: "success",
+      });
     } catch (e) {
-      alert("Erro ao excluir: " + (e?.response?.data?.message || e.message));
+      toaster.create({
+        title: "Erro ao excluir",
+        description: e?.response?.data?.message || e.message,
+        type: "error",
+      });
     }
-  };
+  }; // <- FALTAVA esse fechamento
 
   const headerSort = (key, label) => (
-    <th
-      role="button"
+    <Box
+      as="th"
       onClick={() => ordenar(key)}
       title="Clique para ordenar"
-      style={{ cursor: "pointer", whiteSpace: "nowrap" }}
+      cursor="pointer"
+      whiteSpace="nowrap"
+      userSelect="none"
+      px={3}
+      py={2}
     >
       {label} {sortKey === key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
-    </th>
+    </Box>
   );
 
-  // Abre modal e busca participantes conforme o modo
+  // Abre dialog e busca participantes conforme o modo
   const abrirParticipantes = async (reuniao) => {
     setModalReuniao(reuniao);
     setModalOpen(true);
@@ -225,7 +267,6 @@ export default function ReunioesTable({
 
     try {
       if (isParticipant) {
-        // participant -> endpoint com CPF
         const cpfRaw =
           localStorage.getItem("participant_cpf") ||
           localStorage.getItem("cpf") ||
@@ -238,11 +279,9 @@ export default function ReunioesTable({
         );
         setModalParticipantes(data?.participantes ?? []);
       } else {
-        // user/admin -> usa show normal
         const { data } = await API.get(`/reunioes/${reuniao.id}`);
         const participantes = Array.isArray(data?.participantes) ? data.participantes : [];
         setModalParticipantes(participantes);
-        // se o backend não devolver titulo por algum motivo, mantemos o do row
         setModalReuniao((prev) => ({ ...(prev || {}), titulo: data?.titulo ?? prev?.titulo }));
       }
     } catch (e) {
@@ -255,88 +294,72 @@ export default function ReunioesTable({
   const showActions = isAdmin || isUser || isParticipant;
 
   return (
-    <div className="card shadow-sm mt-4">
-      <div className="card-header">
-        <div className="text-center">
-          <strong className="h5 d-block m-0">Reuniões</strong>
-        </div>
+    <Card variant="outline" borderColor="gray.200">
+      <CardHeader>
+        <VStack align="stretch" spacing={4}>
+          <Heading size="md" textAlign="center">Reuniões</Heading>
 
-        <div className="d-flex flex-wrap gap-2 align-items-end mt-3">
-          <div className="me-auto" />
-          <div>
-            <label className="form-label mb-1">Buscar</label>
-            <input
-              className="form-control"
-              placeholder="Título/descrição…"
-              value={q}
-              onChange={(e) => {
-                setPage(1);
-                setQ(e.target.value);
-              }}
-            />
-          </div>
-          <div>
-            <label className="form-label mb-1">Data inicial</label>
-            <input
+          <Stack direction={{ base: "column", md: "row" }} spacing={3} align="end">
+            <Box flex="1" />
+
+            <InputGroup maxW="320px">
+              {/* <InputLeftElement pointerEvents="none">
+                <FiSearch />
+              </InputLeftElement> */}
+              <Input
+                placeholder="Título/descrição…"
+                value={q}
+                onChange={(e) => { setPage(1); setQ(e.target.value); }}
+              />
+            </InputGroup>
+
+            <Input
               type="date"
-              className="form-control"
               value={dataIni}
-              onChange={(e) => {
-                setPage(1);
-                setDataIni(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setDataIni(e.target.value); }}
+              maxW="180px"
             />
-          </div>
-          <div>
-            <label className="form-label mb-1">Data final</label>
-            <input
+            <Input
               type="date"
-              className="form-control"
               value={dataFim}
-              onChange={(e) => {
-                setPage(1);
-                setDataFim(e.target.value);
-              }}
+              onChange={(e) => { setPage(1); setDataFim(e.target.value); }}
+              maxW="180px"
             />
-          </div>
-          <div>
-            <label className="form-label mb-1">Por página</label>
-            <select
-              className="form-select"
+
+            <Select
               value={perPage}
-              onChange={(e) => {
-                setPage(1);
-                setPerPage(Number(e.target.value));
-              }}
+              onChange={(e) => { setPage(1); setPerPage(Number(e.target.value)); }}
+              maxW="140px"
             >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-          </div>
+              {[5,10,25,50].map(n => <option key={n} value={n}>{n}/página</option>)}
+            </Select>
 
-          {isAdmin && (
-            <div className="ms-auto">
-              <label className="form-label mb-1 d-block invisible">.</label>
-              <button className="btn btn-primary" onClick={onNova}>
-                Cadastrar
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+            {isAdmin && (
+              <Button onClick={onNova} colorPalette="brand">Cadastrar</Button>
+            )}
+          </Stack>
+        </VStack>
+      </CardHeader>
 
-      <div className="card-body p-0">
-        {loading && <div className="p-4 text-center text-muted">Carregando…</div>}
-        {err && !loading && (
-          <div className="alert alert-danger m-3">
-            Erro ao carregar: {typeof err === "string" ? err : JSON.stringify(err)}
-          </div>
+      <CardBody p={0}>
+        {loading && (
+          <HStack justify="center" py={8} color="gray.400">
+            <Spinner /> <Text>Carregando…</Text>
+          </HStack>
         )}
+
+        {err && !loading && (
+          <Box p={4}>
+            <Alert status="error">
+              <AlertTitle>Erro ao carregar</AlertTitle>
+              <AlertDescription>{String(err)}</AlertDescription>
+            </Alert>
+          </Box>
+        )}
+
         {!loading && !err && (
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
+          <Box overflowX="auto">
+            <Table size="sm" variant="simple">
               <thead>
                 <tr>
                   {headerSort("titulo", "Título")}
@@ -345,20 +368,23 @@ export default function ReunioesTable({
                   {headerSort("hora", "Hora")}
                   {headerSort("local", "Local")}
                   {showActions && (
-                    <th className="text-end" style={{ width: isAdmin ? 220 : 180 }}>
+                    <Box
+                      as="th"
+                      textAlign="right"
+                      px={3}
+                      py={2}
+                      width={isAdmin ? "220px" : "180px"}
+                    >
                       Ações
-                    </th>
+                    </Box>
                   )}
                 </tr>
               </thead>
               <tbody>
                 {itensOrdenados.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={showActions ? 6 : 5}
-                      className="text-center text-muted py-4"
-                    >
-                      Nenhuma reunião encontrada.
+                    <td colSpan={showActions ? 6 : 5}>
+                      <Text align="center" py={6} color="gray.500">Nenhuma reunião encontrada.</Text>
                     </td>
                   </tr>
                 ) : (
@@ -366,79 +392,65 @@ export default function ReunioesTable({
                     <tr key={r.id}>
                       <td>{r.titulo}</td>
                       <td>
-                        <span
-                          title={r.descricao || ""}
-                          className="d-inline-block text-truncate"
-                          style={{ maxWidth: 360 }}
-                        >
+                        <Text noOfLines={1} title={r.descricao || ""} maxW="360px">
                           {r.descricao || "-"}
-                        </span>
+                        </Text>
                       </td>
                       <td>{r.data || ""}</td>
                       <td>{r.hora || ""}</td>
                       <td>{r.local || ""}</td>
 
                       {showActions && (
-                        <td className="text-end">
-                          <div className="btn-group">
+                        <td>
+                          <HStack justify="end" spacing={2}>
                             {isAdmin && (
                               <>
-                                <button
-                                  className="btn btn-sm btn-warning"
-                                  onClick={() => onEditar(r)}
-                                >
+                                <Button size="xs" colorPalette="yellow" onClick={() => onEditar(r)}>
                                   Editar
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-danger"
-                                  onClick={() => excluir(r.id)}
-                                >
+                                </Button>
+                                <Button size="xs" colorPalette="red" onClick={() => excluir(r.id)}>
                                   Excluir
-                                </button>
+                                </Button>
                               </>
                             )}
-
                             {(isUser || isAdmin || isParticipant) && (
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => abrirParticipantes(r)}
-                              >
+                              <Button size="xs" colorPalette="brand" onClick={() => abrirParticipantes(r)}>
                                 Ver participantes
-                              </button>
+                              </Button>
                             )}
-                          </div>
+                          </HStack>
                         </td>
                       )}
                     </tr>
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
+            </Table>
+          </Box>
         )}
-      </div>
+      </CardBody>
 
-      <div className="card-footer d-flex justify-content-between align-items-center">
-        <small className="text-muted">
+      <CardFooter justify="space-between" alignItems="center">
+        <Text fontSize="sm" color="gray.500">
           {total} registro{total === 1 ? "" : "s"} • Página {page} de {lastPage}
-        </small>
-        <div className="btn-group">
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            disabled={page <= 1}
+        </Text>
+        <HStack>
+          <Button
+            size="sm" variant="outline"
+            isDisabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             ‹ Anterior
-          </button>
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            disabled={page >= lastPage}
+          </Button>
+          <Button
+            size="sm" variant="outline"
+            isDisabled={page >= lastPage}
             onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
           >
             Próxima ›
-          </button>
-        </div>
-      </div>
+          </Button>
+        </HStack>
+      </CardFooter>
 
       <ModalParticipantes
         open={modalOpen}
@@ -448,6 +460,6 @@ export default function ReunioesTable({
         error={modalError}
         participantes={modalParticipantes}
       />
-    </div>
+    </Card>
   );
 }
