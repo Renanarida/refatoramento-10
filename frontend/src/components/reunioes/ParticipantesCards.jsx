@@ -82,14 +82,14 @@ export default function ParticipantesCards({ value = [], onChange, canEdit = tru
                   </button>
                 </>
               )}
-              <a
+              {/* <a
                 className="btn btn-success btn-sm"
                 href={waLink(p.telefone, p.nome) || "#"}
                 target="_blank"
                 rel="noreferrer"
               >
                 WhatsApp
-              </a>
+              </a> */}
             </footer>
           </article>
         ))}

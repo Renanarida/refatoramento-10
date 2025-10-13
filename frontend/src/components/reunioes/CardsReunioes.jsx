@@ -1,6 +1,7 @@
 // src/components/reunioes/CardsReunioes.jsx
 import { useEffect, useState } from "react";
 import API from "../../services/api";
+import { Grid, Card, CardContent, Typography, Alert, Skeleton } from "@mui/material";
 
 export default function CardsReunioes() {
   const [stats, setStats] = useState({ total: 0, hoje: 0, amanha: 0, prox_48h: 0 });
@@ -9,72 +10,52 @@ export default function CardsReunioes() {
 
   useEffect(() => {
     let alive = true;
-
     (async () => {
       setLoading(true);
       setErr(null);
-
-      // tenta /reunioes/stats e cai para /reunioes/cards se precisar
-      const endpoints = ["/reunioes/stats", "/reunioes/cards"];
-
-      for (const ep of endpoints) {
-        try {
-          const { data } = await API.get(ep);
-
-          // payload pode vir como {resumo:{...}} ou direto {...}
-          const payload = data?.resumo ?? data ?? {};
-          const prox48 = payload.prox_48h ?? payload.proximas_48h ?? 0;
-
-          if (!alive) return;
-          setStats({
-            total: Number(payload.total ?? 0),
-            hoje: Number(payload.hoje ?? 0),
-            amanha: Number(payload.amanha ?? 0),
-            prox_48h: Number(prox48),
-          });
-          setLoading(false);
-          return; // sucesso, sai do laço
-        } catch (e) {
-          // se falhar neste endpoint, tenta o próximo
-          if (ep === endpoints[endpoints.length - 1]) {
-            const msg =
-              e?.response?.status === 401
-                ? "Sua sessão expirou. Faça login novamente."
-                : e?.response?.data?.message || e.message || "Erro ao carregar.";
-            if (!alive) return;
-            setErr(msg);
-            setLoading(false);
-          }
-        }
+      try {
+        const { data } = await API.get("/reunioes/stats");
+        if (!alive) return;
+        setStats({
+          total: data?.total ?? 0,
+          hoje: data?.hoje ?? 0,
+          amanha: data?.amanha ?? 0,
+          prox_48h: data?.prox_48h ?? 0,
+        });
+      } catch (e) {
+        if (!alive) return;
+        setErr(e?.response?.data?.message || "Não foi possível carregar os cards.");
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
-
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, []);
 
   const Cell = ({ label, value }) => (
-    <div className="col-md-3">
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <h6 className="text-muted">{label}</h6>
-          <div className="h3 m-0">{loading ? "—" : value ?? "—"}</div>
-        </div>
-      </div>
-    </div>
+    <Grid item xs={12} sm={6} md={3}>
+      <Card elevation={1}>
+        <CardContent>
+          <Typography variant="body2" color="text.secondary">{label}</Typography>
+          {loading ? (
+            <Skeleton variant="text" sx={{ fontSize: "2rem", width: 80 }} />
+          ) : (
+            <Typography variant="h4">{value ?? "—"}</Typography>
+          )}
+        </CardContent>
+      </Card>
+    </Grid>
   );
 
   return (
     <>
-      {err && <div className="alert alert-danger mb-3">{err}</div>}
-
-      <div className="row g-3">
+      {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
+      <Grid container spacing={3}>
         <Cell label="Total" value={stats.total} />
         <Cell label="Hoje" value={stats.hoje} />
         <Cell label="Amanhã" value={stats.amanha} />
         <Cell label="Próx. 48h" value={stats.prox_48h} />
-      </div>
+      </Grid>
     </>
   );
 }

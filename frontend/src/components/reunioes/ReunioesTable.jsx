@@ -1,445 +1,419 @@
+// src/components/reunioes/ReunioesTable.jsx
 import { useEffect, useMemo, useState } from "react";
 import API from "../../services/api";
 import { useAuth } from "../../services/useAuth";
-import { maskCpf, maskTelefone } from "../../utils/masks";
+import {
+  Paper, Box, Grid, TextField, Select, MenuItem, InputLabel, FormControl,
+  Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
+  TableSortLabel, Typography, Pagination, Dialog, DialogTitle, DialogContent,
+  DialogActions, Alert, Card, CardHeader, CardContent, Chip, Avatar, Stack,
+  IconButton, Tooltip, Snackbar, Link
+} from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 
 const EV_SALVA = "reuniao:salva";
-
-function normalizeCpf(v = "") {
-  return String(v).replace(/\D+/g, "");
-}
+const normalizeCpf = (v = "") => String(v).replace(/\D+/g, "");
 
 function ModalParticipantes({ open, onClose, reuniao, loading, error, participantes }) {
-  if (!open) return null;
+  const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
+
+  const fmtCpf = (v = "") => {
+    const d = onlyDigits(v).slice(0, 11);
+    if (!d) return "—";
+    const p1 = d.slice(0, 3), p2 = d.slice(3, 6), p3 = d.slice(6, 9), p4 = d.slice(9, 11);
+    return [p1, p2, p3].filter(Boolean).join(".") + (p4 ? "-" + p4 : "");
+  };
+
+  const fmtTelDisplay = (v = "") => {
+    const d = onlyDigits(v);
+    if (!d) return "—";
+    if (d.length === 11) return d.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    if (d.length === 10) return d.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return v || "—";
+  };
+
+  const waUrl = (v = "") => {
+    const d = onlyDigits(v);
+    if (!d) return null;
+    const withDDI = d.length >= 12 ? d : `55${d}`;
+    return `https://wa.me/${withDDI}`;
+  };
+
+  const initial = (nome = "") => (nome?.trim?.()[0] || "?").toUpperCase();
+
+  // snackbar "CPF copiado"
+  const [copied, setCopied] = useState(false);
+  const copyText = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {}
+  };
+
   return (
-    <div
-      className="position-fixed top-0 start-0 w-100 h-100"
-      style={{ background: "rgba(0,0,0,0.35)", zIndex: 1050 }}
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded shadow p-3"
-        style={{
-          width: "min(800px, 95vw)",
-          maxHeight: "85vh",
-          overflow: "auto",
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="d-flex align-items-center justify-content-between mb-2">
-          <h5 className="m-0">
-            Participantes {reuniao ? `— ${reuniao.titulo ?? ""}` : ""}
-          </h5>
-          <button className="btn btn-sm btn-outline-secondary" onClick={onClose}>
-            Fechar
-          </button>
-        </div>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Participantes — {reuniao?.titulo ?? ""}</DialogTitle>
 
-        {loading && <div className="text-muted py-3">Carregando…</div>}
-        {error && !loading && <div className="alert alert-danger">{error}</div>}
+      <DialogContent dividers>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        {!loading && !error && (
-          <div className="row g-3">
-            {Array.isArray(participantes) && participantes.length > 0 ? (
-              participantes.map((p) => (
-                <div key={p.id ?? `${p.nome}-${p.email}-${p.papel}`} className="col-12 col-md-6">
-                  <div className="border rounded p-3 h-100">
-                    <div className="fw-semibold">{p.nome || "(sem nome)"}</div>
-                    <div className="text-muted small">{p.email || "-"}</div>
-                    <div className="badge bg-secondary mt-2">{p.papel || "participante"}</div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-muted py-3">Nenhum participante encontrado.</div>
-            )}
-          </div>
+        {loading ? (
+          <Typography variant="body2" color="text.secondary">Carregando…</Typography>
+        ) : !participantes?.length ? (
+          <Typography variant="body2" color="text.secondary">Sem participantes.</Typography>
+        ) : (
+          <Grid container spacing={2}>
+            {participantes.map((p) => {
+              const cpfDigits = onlyDigits(p?.cpf ?? "");
+              const cpfFmt = fmtCpf(p?.cpf ?? "");
+              const telFmt = fmtTelDisplay(p?.telefone ?? "");
+              const wa = waUrl(p?.telefone ?? "");
+
+              // 🔹 tenta várias chaves (e também dentro de pivot)
+              const cargo =
+                p?.cargo ??
+                p?.profissao ??
+                p?.papel ??
+                p?.funcao ??
+                p?.role ??
+                p?.job_title ??
+                p?.ocupacao ??
+                p?.pivot?.cargo ??
+                p?.pivot?.profissao ??
+                p?.pivot?.papel ??
+                p?.pivot?.funcao ??
+                "—";
+
+              const email = p?.email ?? p?.pivot?.email ?? "—";
+
+              return (
+                <Grid item xs={12} sm={6} md={4} key={p?.id ?? cpfDigits ?? p?.nome ?? Math.random()}>
+                  <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardHeader
+                      avatar={<Avatar>{initial(p?.nome)}</Avatar>}
+                      title={p?.nome || "—"}
+                      // subheader com email + Papel:
+                      subheader={
+                        <>
+                          <Typography variant="body2" color="text.secondary">
+                            {email}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Papel:</strong> {cargo}
+                          </Typography>
+                        </>
+                      }
+                      sx={{ pb: 0 }}
+                    />
+                    <CardContent sx={{ pt: 1 }}>
+                      <Stack spacing={1.25}>
+                        {/* CPF */}
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                          <Typography variant="caption" color="text.secondary">CPF</Typography>
+                          <Chip size="small" label={cpfFmt} />
+                          {cpfDigits && (
+                            <Tooltip title="Copiar CPF">
+                              <IconButton size="small" onClick={() => copyText(cpfDigits)} aria-label="copiar cpf">
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Stack>
+
+                        {/* Telefone */}
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                          <Typography variant="caption" color="text.secondary">Telefone</Typography>
+                          <Typography variant="body2">{telFmt}</Typography>
+                          {wa && (
+                            <Tooltip title="Abrir WhatsApp">
+                              <IconButton
+                                size="small"
+                                component={Link}
+                                href={wa}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="whatsapp"
+                              >
+                                <WhatsAppIcon fontSize="inherit" color="success" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
         )}
-      </div>
-    </div>
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={onClose}>Fechar</Button>
+      </DialogActions>
+
+      <Snackbar
+        open={copied}
+        autoHideDuration={2000}
+        onClose={() => setCopied(false)}
+        message="CPF copiado"
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
+    </Dialog>
   );
 }
 
-export default function ReunioesTable({
-  onNova = () => {},
-  onEditar = () => {},
-  refreshTick = 0,
-}) {
-  const { mode } = useAuth();
-  const isAdmin = mode === "admin";
-  const isParticipant = mode === "participant";
-  const isUser = mode === "user";
+export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
+  const { isAdmin, isUser, isParticipant } = useAuth();
 
-  const [itens, setItens] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(null);
-
+  // filtros / estado
   const [q, setQ] = useState("");
   const [dataIni, setDataIni] = useState("");
   const [dataFim, setDataFim] = useState("");
-
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [total, setTotal] = useState(0);
   const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const [sortKey, setSortKey] = useState("data");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState(null);
+  const [itens, setItens] = useState([]);
+
+  // ordenação
+  const [sortKey, setSortKey] = useState("data");     // ajuste ao seu padrão
   const [sortDir, setSortDir] = useState("asc");
 
-  // Modal
+  // modal participantes
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalReuniao, setModalReuniao] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState(null);
   const [modalParticipantes, setModalParticipantes] = useState([]);
-  const [modalReuniao, setModalReuniao] = useState(null);
 
-  const endpoint =
-    isAdmin || isUser
-      ? "/reunioes"
-      : isParticipant
-      ? "/participante/reunioes"
-      : "/public/reunioes";
-
-  const fetchData = async () => {
-    setLoading(true);
-    setErr(null);
-    try {
-      if (isParticipant) {
-        const cpf = localStorage.getItem("cpf");
-        if (cpf) API.defaults.headers["X-CPF"] = cpf;
-      }
-
-      const { data } = await API.get(endpoint, {
-        params: {
-          q: q || undefined,
-          data_ini: dataIni || undefined,
-          data_fim: dataFim || undefined,
-          page,
-          per_page: perPage,
-        },
-      });
-
-      const rows = Array.isArray(data) ? data : data.data ?? [];
-      const lp = data?.meta?.last_page ?? data?.last_page ?? 1;
-      const tt = data?.meta?.total ?? data?.total ?? rows.length ?? 0;
-
-      setItens(rows);
-      setTotal(tt);
-      setLastPage(lp);
-    } catch (e) {
-      setErr(e?.response?.data?.message || e.message || "Erro ao carregar.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, dataIni, dataFim, page, perPage, refreshTick, endpoint, mode]);
-
-  useEffect(() => {
-    const handler = () => {
-      setPage(1);
-      fetchData();
-    };
-    window.addEventListener(EV_SALVA, handler);
-    return () => window.removeEventListener(EV_SALVA, handler);
-  }, []);
+  const showActions = isAdmin || isUser || isParticipant;
 
   const ordenar = (key) => {
-    if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
   };
 
   const itensOrdenados = useMemo(() => {
-    const arr = [...itens];
+    const arr = Array.isArray(itens) ? [...itens] : [];
     arr.sort((a, b) => {
-      const va = a?.[sortKey];
-      const vb = b?.[sortKey];
-
-      if (sortKey === "data") {
-        const da = va ? new Date(va) : new Date(0);
-        const db = vb ? new Date(vb) : new Date(0);
-        return sortDir === "asc" ? da - db : db - da;
-      }
-      if (sortKey === "hora") {
-        const toMin = (h) => {
-          if (!h) return -1;
-          const [H = "0", M = "0"] = String(h).split(":");
-          return parseInt(H, 10) * 60 + parseInt(M, 10);
-        };
-        const ha = toMin(va);
-        const hb = toMin(vb);
-        return sortDir === "asc" ? ha - hb : hb - ha;
-      }
-
-      const sva = (va ?? "") + "";
-      const svb = (vb ?? "") + "";
-      if (sva < svb) return sortDir === "asc" ? -1 : 1;
-      if (sva > svb) return sortDir === "asc" ? 1 : -1;
+      const A = (a?.[sortKey] ?? "").toString();
+      const B = (b?.[sortKey] ?? "").toString();
+      if (A < B) return sortDir === "asc" ? -1 : 1;
+      if (A > B) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
     return arr;
   }, [itens, sortKey, sortDir]);
 
+  // fetch
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setErr(null);
+      try {
+        let endpoint = "/reunioes";
+        if (isParticipant) endpoint = "/participante/reunioes";
+
+        // envia CPF no header quando modo participante
+        if (isParticipant) {
+          const cpf = localStorage.getItem("cpf");
+          if (cpf) API.defaults.headers["X-CPF"] = normalizeCpf(cpf);
+        }
+
+        const { data } = await API.get(endpoint, {
+          params: {
+            q: q || undefined,
+            data_ini: dataIni || undefined,
+            data_fim: dataFim || undefined,
+            page, per_page: perPage,
+          },
+        });
+
+        if (!alive) return;
+        const rows = Array.isArray(data) ? data : (data?.data ?? []);
+        setItens(rows);
+        setTotal(data?.total ?? rows.length);
+        setLastPage(data?.last_page ?? 1);
+      } catch (e) {
+        if (!alive) return;
+        setErr(e?.response?.data?.message || "Erro ao carregar reuniões.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [q, dataIni, dataFim, page, perPage, refreshTick, isParticipant]);
+
   const excluir = async (id) => {
-    if (!isAdmin) {
-      alert("Ação permitida apenas para administradores.");
-      return;
-    }
-    if (!confirm("Tem certeza que deseja excluir esta reunião?")) return;
-    try {
-      await API.delete(`/reunioes/${id}`);
-      fetchData();
-    } catch (e) {
-      alert("Erro ao excluir: " + (e?.response?.data?.message || e.message));
-    }
+    if (!confirm("Tem certeza que deseja excluir?")) return;
+    await API.delete(`/reunioes/${id}`);
+    window.dispatchEvent(new Event(EV_SALVA));
+    // força refresh
+    setPage(1);
   };
 
-  const headerSort = (key, label) => (
-    <th
-      role="button"
-      onClick={() => ordenar(key)}
-      title="Clique para ordenar"
-      style={{ cursor: "pointer", whiteSpace: "nowrap" }}
-    >
-      {label} {sortKey === key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
-    </th>
-  );
-
-  // Abre modal e busca participantes conforme o modo
-  const abrirParticipantes = async (reuniao) => {
-    setModalReuniao(reuniao);
+  const abrirModalParticipantes = async (reuniao) => {
     setModalOpen(true);
+    setModalReuniao(reuniao);
     setModalLoading(true);
     setModalError(null);
     setModalParticipantes([]);
 
     try {
       if (isParticipant) {
-        // participant -> endpoint com CPF
-        const cpfRaw =
-          localStorage.getItem("participant_cpf") ||
-          localStorage.getItem("cpf") ||
-          localStorage.getItem("participantCpf");
-        const cpf = cpfRaw ? normalizeCpf(cpfRaw) : null;
-
-        const { data } = await API.get(
-          `/reunioes/${reuniao.id}/participantes-by-cpf`,
-          { params: { cpf } }
-        );
-        setModalParticipantes(data?.participantes ?? []);
+        const cpf = localStorage.getItem("cpf");
+        if (!cpf) throw new Error("Informe seu CPF para listar suas reuniões.");
+        const { data } = await API.get(`/participante/reunioes`, { params: { cpf: normalizeCpf(cpf) } });
+        setModalParticipantes(Array.isArray(data?.participantes) ? data.participantes : []);
       } else {
-        // user/admin -> usa show normal
         const { data } = await API.get(`/reunioes/${reuniao.id}`);
-        const participantes = Array.isArray(data?.participantes) ? data.participantes : [];
-        setModalParticipantes(participantes);
-        // se o backend não devolver titulo por algum motivo, mantemos o do row
-        setModalReuniao((prev) => ({ ...(prev || {}), titulo: data?.titulo ?? prev?.titulo }));
+        setModalParticipantes(Array.isArray(data?.participantes) ? data.participantes : []);
       }
     } catch (e) {
-      setModalError(e?.response?.data?.message || e.message || "Erro ao carregar participantes");
+      setModalError(e?.response?.data?.message || e?.message || "Erro ao carregar participantes.");
     } finally {
       setModalLoading(false);
     }
   };
 
-  const showActions = isAdmin || isUser || isParticipant;
-
   return (
-    <div className="card shadow-sm mt-4">
-      <div className="card-header">
-        <div className="text-center">
-          <strong className="h5 d-block m-0">Reuniões</strong>
-        </div>
-
-        <div className="d-flex flex-wrap gap-2 align-items-end mt-3">
-          <div className="me-auto" />
-          <div>
-            <label className="form-label mb-1">Buscar</label>
-            <input
-              className="form-control"
-              placeholder="Título/descrição…"
-              value={q}
-              onChange={(e) => {
-                setPage(1);
-                setQ(e.target.value);
-              }}
-            />
-          </div>
-          <div>
-            <label className="form-label mb-1">Data inicial</label>
-            <input
-              type="date"
-              className="form-control"
-              value={dataIni}
-              onChange={(e) => {
-                setPage(1);
-                setDataIni(e.target.value);
-              }}
-            />
-          </div>
-          <div>
-            <label className="form-label mb-1">Data final</label>
-            <input
-              type="date"
-              className="form-control"
-              value={dataFim}
-              onChange={(e) => {
-                setPage(1);
-                setDataFim(e.target.value);
-              }}
-            />
-          </div>
-          <div>
-            <label className="form-label mb-1">Por página</label>
-            <select
-              className="form-select"
+    <Paper elevation={1} sx={{ p: 2 }}>
+      {/* Filtros / Ações */}
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+        <Grid item xs={12} md={4}>
+          <TextField
+            fullWidth size="small" variant="outlined"
+            placeholder="Título/descrição…"
+            value={q} onChange={(e) => { setPage(1); setQ(e.target.value); }}
+          />
+        </Grid>
+        <Grid item xs={6} md={2}>
+          <TextField
+            label="De" type="date" size="small" fullWidth
+            value={dataIni} onChange={(e) => { setPage(1); setDataIni(e.target.value); }}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+        <Grid item xs={6} md={2}>
+          <TextField
+            label="Até" type="date" size="small" fullWidth
+            value={dataFim} onChange={(e) => { setPage(1); setDataFim(e.target.value); }}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+        <Grid item xs={6} md={2}>
+          <FormControl size="small" fullWidth>
+            <InputLabel id="perpage-label">Por página</InputLabel>
+            <Select
+              labelId="perpage-label" label="Por página"
               value={perPage}
-              onChange={(e) => {
-                setPage(1);
-                setPerPage(Number(e.target.value));
-              }}
+              onChange={(e) => { setPage(1); setPerPage(Number(e.target.value)); }}
             >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-          </div>
+              {[5,10,25,50].map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Grid>
 
-          {isAdmin && (
-            <div className="ms-auto">
-              <label className="form-label mb-1 d-block invisible">.</label>
-              <button className="btn btn-primary" onClick={onNova}>
-                Cadastrar
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="card-body p-0">
-        {loading && <div className="p-4 text-center text-muted">Carregando…</div>}
-        {err && !loading && (
-          <div className="alert alert-danger m-3">
-            Erro ao carregar: {typeof err === "string" ? err : JSON.stringify(err)}
-          </div>
+        {isAdmin && (
+          <Grid item xs={6} md={2} sx={{ textAlign: { md: "right" } }}>
+            <Button variant="contained" onClick={onNova}>Cadastrar</Button>
+          </Grid>
         )}
-        {!loading && !err && (
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  {headerSort("titulo", "Título")}
-                  {headerSort("descricao", "Descrição")}
-                  {headerSort("data", "Data")}
-                  {headerSort("hora", "Hora")}
-                  {headerSort("local", "Local")}
-                  {showActions && (
-                    <th className="text-end" style={{ width: isAdmin ? 220 : 180 }}>
-                      Ações
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {itensOrdenados.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={showActions ? 6 : 5}
-                      className="text-center text-muted py-4"
-                    >
-                      Nenhuma reunião encontrada.
-                    </td>
-                  </tr>
-                ) : (
-                  itensOrdenados.map((r) => (
-                    <tr key={r.id}>
-                      <td>{r.titulo}</td>
-                      <td>
-                        <span
-                          title={r.descricao || ""}
-                          className="d-inline-block text-truncate"
-                          style={{ maxWidth: 360 }}
-                        >
-                          {r.descricao || "-"}
-                        </span>
-                      </td>
-                      <td>{r.data || ""}</td>
-                      <td>{r.hora || ""}</td>
-                      <td>{r.local || ""}</td>
+      </Grid>
 
-                      {showActions && (
-                        <td className="text-end">
-                          <div className="btn-group">
-                            {isAdmin && (
-                              <>
-                                <button
-                                  className="btn btn-sm btn-warning"
-                                  onClick={() => onEditar(r)}
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-danger"
-                                  onClick={() => excluir(r.id)}
-                                >
-                                  Excluir
-                                </button>
-                              </>
-                            )}
+      {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
 
-                            {(isUser || isAdmin || isParticipant) && (
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => abrirParticipantes(r)}
-                              >
-                                Ver participantes
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))
+      {/* Tabela */}
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell sortDirection={sortKey === "titulo" ? sortDir : false}>
+                <TableSortLabel
+                  active={sortKey === "titulo"}
+                  direction={sortKey === "titulo" ? sortDir : "asc"}
+                  onClick={() => ordenar("titulo")}
+                >
+                  Título
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>Descrição</TableCell>
+              <TableCell sortDirection={sortKey === "data" ? sortDir : false}>
+                <TableSortLabel
+                  active={sortKey === "data"}
+                  direction={sortKey === "data" ? sortDir : "asc"}
+                  onClick={() => ordenar("data")}
+                >
+                  Data
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>Hora</TableCell>
+              <TableCell>Local</TableCell>
+              {showActions && <TableCell align="right">Ações</TableCell>}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {(!loading && itensOrdenados.length === 0) && (
+              <TableRow>
+                <TableCell colSpan={showActions ? 6 : 5} align="center">
+                  <Typography variant="body2" color="text.secondary">Nenhuma reunião encontrada.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+            {itensOrdenados.map((r) => (
+              <TableRow key={r.id} hover>
+                <TableCell>{r.titulo}</TableCell>
+                <TableCell>
+                  <Typography variant="body2" noWrap title={r.descricao || ""}>
+                    {r.descricao || "-"}
+                  </Typography>
+                </TableCell>
+                <TableCell>{r.data || ""}</TableCell>
+                <TableCell>{r.hora || ""}</TableCell>
+                <TableCell>{r.local || ""}</TableCell>
+                {showActions && (
+                  <TableCell align="right">
+                    {isAdmin && (
+                      <>
+                        <Button size="small" variant="contained" color="warning" onClick={() => onEditar(r)}>
+                          Editar
+                        </Button>
+                        <Button size="small" variant="contained" color="error" onClick={() => excluir(r.id)} sx={{ ml: 1 }}>
+                          Excluir
+                        </Button>
+                      </>
+                    )}
+                    {(isAdmin || isUser || isParticipant) && (
+                      <Button size="small" variant="outlined" onClick={() => abrirModalParticipantes(r)} sx={{ ml: isAdmin ? 1 : 0 }}>
+                        Participantes
+                      </Button>
+                    )}
+                  </TableCell>
                 )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      <div className="card-footer d-flex justify-content-between align-items-center">
-        <small className="text-muted">
-          {total} registro{total === 1 ? "" : "s"} • Página {page} de {lastPage}
-        </small>
-        <div className="btn-group">
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            ‹ Anterior
-          </button>
-          <button
-            className="btn btn-outline-secondary btn-sm"
-            disabled={page >= lastPage}
-            onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-          >
-            Próxima ›
-          </button>
-        </div>
-      </div>
+      {/* Paginação */}
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+        <Pagination
+          color="primary"
+          page={page}
+          count={lastPage || 1}
+          onChange={(_, value) => setPage(value)}
+        />
+      </Box>
 
+      {/* Modal Participantes */}
       <ModalParticipantes
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -448,6 +422,6 @@ export default function ReunioesTable({
         error={modalError}
         participantes={modalParticipantes}
       />
-    </div>
+    </Paper>
   );
 }
