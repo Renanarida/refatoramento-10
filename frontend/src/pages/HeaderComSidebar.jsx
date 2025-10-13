@@ -3,7 +3,7 @@ import { useNavigate, NavLink, Link, useLocation } from "react-router-dom";
 // import { doLogout } from "../services/Auth"; // <- se quiser usar, descomente e use
 import EditUserModal from "../components/reunioes/EditaUSerModal.jsx"; // ✅ case e extensão corrigidos
 import "../style/header-sidebar.css";
-import menuIcon from "../../public/img/menu.png";
+import menuIcon from "../assets/menu.png";
 
 const API = "http://localhost:8000/api";
 
@@ -117,7 +117,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         <div className="hsd-sidebar__header">
           <span className="hsd-brand">Reuniões</span>
           <button className="hsd-icon-btn" onClick={() => setOpen(false)} aria-label="Fechar menu">
-            <img className="MenuIcon" src="/img/menu.png" alt="menu" style={{ height: "35px", width: "35px" }}/>
+            <img className="menu-icon" src="/menu.png" alt="menu" />
           </button>
         </div>
 
