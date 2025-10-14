@@ -1,9 +1,22 @@
+// src/pages/ParticipanteCpf.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API, { setCpfHeader } from "../services/api";
 import { maskCpf } from "../utils/masks";
 
-const normalizeCpf = (v="") => String(v).replace(/\D+/g, "").slice(0,11);
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Alert,
+  Stack,
+  CircularProgress,
+} from "@mui/material";
+
+const normalizeCpf = (v = "") => String(v).replace(/\D+/g, "").slice(0, 11);
 
 export default function ParticipanteCpf() {
   const [cpf, setCpf] = useState("");
@@ -14,6 +27,7 @@ export default function ParticipanteCpf() {
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg(null);
+
     const puro = normalizeCpf(cpf);
     if (puro.length !== 11) {
       setMsg("Informe um CPF com 11 dígitos.");
@@ -24,8 +38,7 @@ export default function ParticipanteCpf() {
       setLoading(true);
       const { data } = await API.post("/participante/check-cpf", { cpf: puro });
       if (data?.ok && data?.exists) {
-        setCpfHeader(puro);          // salva e injeta X-CPF
-        // se você usa useAuth().asParticipant, pode chamar aqui também
+        setCpfHeader(puro);
         navigate("/dashboard-participante");
       } else {
         setMsg("CPF não encontrado em nenhuma reunião.");
@@ -42,26 +55,67 @@ export default function ParticipanteCpf() {
   }
 
   return (
-    <div className="min-h-screen d-flex align-items-center justify-content-center" style={{ background:'#0a2f87' }}>
-      <div className="bg-white rounded-3 shadow p-4" style={{ width:'min(420px, 92vw)' }}>
-        <h1 className="h4 text-center mb-3" style={{ color:'#0a2f87' }}>Acesso do Participante</h1>
-        <p className="text-muted text-center mb-4">Informe seu CPF para verificar o acesso.</p>
+    <Box
+      sx={{
+        width: "100vw",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.default",
+        background:
+          "linear-gradient(180deg, rgba(99,102,241,0.15) 0%, rgba(99,102,241,0.05) 100%)",
+        px: 2,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={6}
+          sx={{
+            width: { xs: "92vw", sm: 420 },
+            mx: "auto",
+            p: 4,
+            borderRadius: 3,
+          }}
+        >
+          <Stack component="form" onSubmit={handleSubmit} spacing={2}>
+            <Typography
+              variant="h5"
+              align="center"
+              sx={{ fontWeight: 700, color: "primary.main" }}
+            >
+              Acesso do Participante
+            </Typography>
 
-        <form onSubmit={handleSubmit} className="d-grid gap-3">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="000.000.000-00"
-            value={cpf}
-            onChange={(e) => setCpf(maskCpf(e.target.value))}
-            inputMode="numeric"
-          />
-          <button className="btn btn-primary" disabled={loading}>
-            {loading ? "Verificando..." : "Continuar"}
-          </button>
-          {msg && <div className="alert alert-warning m-0 mt-2">{msg}</div>}
-        </form>
-      </div>
-    </div>
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 1 }}>
+              Informe seu CPF para verificar o acesso.
+            </Typography>
+
+            <TextField
+              fullWidth
+              placeholder="000.000.000-00"
+              value={cpf}
+              onChange={(e) => setCpf(maskCpf(e.target.value))}
+              inputProps={{ inputMode: "numeric" }}
+            />
+
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={22} sx={{ color: "common.white" }} /> : "Continuar"}
+            </Button>
+
+            {msg && (
+              <Alert severity="warning" sx={{ mt: 1, mb: 0 }}>
+                {msg}
+              </Alert>
+            )}
+          </Stack>
+        </Paper>
+      </Container>
+    </Box>
   );
 }

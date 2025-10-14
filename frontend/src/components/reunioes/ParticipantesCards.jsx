@@ -144,7 +144,7 @@ export default function ParticipantesCards({ value = [], onChange, canEdit = tru
                   />
                 </label>
                 <label>
-                  <span>Área</span>
+                  <span>Papel</span>
                   <input
                     type="text"
                     value={form.papel}

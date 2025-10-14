@@ -12,6 +12,23 @@ use Illuminate\Support\Facades\DB;
 
 class ReuniaoController extends Controller
 {
+    /**
+     * Helper: extrai CPF do atributo injetado por middleware, do header X-CPF
+     * ou de query/body. Sempre retorna apenas dígitos (11) ou null.
+     */
+    private function getCpfFromRequest(Request $req): ?string
+    {
+        $raw = $req->attributes->get('cpf_participante')   // setado por middleware cpf.participant (se houver)
+            ?? $req->header('X-CPF')                       // header enviado pelo frontend
+            ?? $req->input('cpf')                          // body/query
+            ?? null;
+
+        if (!$raw) return null;
+
+        $cpf = preg_replace('/\D+/', '', (string) $raw);
+        return $cpf ?: null;
+    }
+
     // GET /api/reunioes?q=...&data_ini=YYYY-MM-DD&data_fim=YYYY-MM-DD&page&per_page
     public function index(Request $req)
     {
@@ -68,7 +85,6 @@ class ReuniaoController extends Controller
     {
         return $this->stats();
     }
-
 
     public function statsPeriodos(Request $req)
     {
@@ -137,6 +153,7 @@ class ReuniaoController extends Controller
             ],
         ]);
     }
+
     // POST /api/reunioes
     public function store(Request $req)
     {
@@ -150,7 +167,7 @@ class ReuniaoController extends Controller
             'participantes' => 'nullable|array',
             'participantes.*.nome'     => 'nullable|string|max:255',
             'participantes.*.email'    => 'nullable|email|max:255',
-            // 'participantes.*.telefone' => 'nullable|string|max:30', // ✅
+            // 'participantes.*.telefone' => 'nullable|string|max:30',
             'participantes.*.papel'    => 'nullable|string|max:100',
             'participantes.*.cpf'      => 'nullable|string|max:20',
         ]);
@@ -187,7 +204,7 @@ class ReuniaoController extends Controller
                 'reuniao_id' => $reuniao->id,
                 'nome'       => $p['nome']     ?? null,
                 'email'      => $p['email']    ?? null,
-                // 'telefone'   => $p['telefone'] ?? null, // ✅
+                // 'telefone'   => $p['telefone'] ?? null,
                 'papel'      => $p['papel']    ?? null,
                 'cpf'        => $cpf,
             ]);
@@ -215,7 +232,7 @@ class ReuniaoController extends Controller
             'participantes' => 'nullable|array',
             'participantes.*.nome'     => 'nullable|string|max:255',
             'participantes.*.email'    => 'nullable|email|max:255',
-            // 'participantes.*.telefone' => 'nullable|string|max:30', // 👈 AQUI
+            // 'participantes.*.telefone' => 'nullable|string|max:30',
             'participantes.*.papel'    => 'nullable|string|max:100',
             'participantes.*.cpf'      => 'nullable|string|max:20',
         ]);
@@ -245,7 +262,7 @@ class ReuniaoController extends Controller
                     'reuniao_id' => $reuniao->id,
                     'nome'       => $p['nome']     ?? null,
                     'email'      => $p['email']    ?? null,
-                    // 'telefone'   => $p['telefone'] ?? null, // 👈 AQUI
+                    // 'telefone'   => $p['telefone'] ?? null,
                     'papel'      => $p['papel']    ?? null,
                     'cpf'        => $cpf,
                 ]);
@@ -273,17 +290,13 @@ class ReuniaoController extends Controller
             ->paginate($req->integer('per_page', 10));
     }
 
-    // GET /api/participante/reunioes  (?cpf=XXXXXXXXXXX)
+    // GET /api/participante/reunioes  (header X-CPF | query/body cpf)
     public function participantIndex(Request $req)
     {
-        // Se existir middleware que injete atributo, usa; senão, pega da querystring
-        $cpf = $req->attributes->get('cpf_participante') ?? $req->input('cpf');
-
-        if (!$cpf) {
+        $cpfDigits = $this->getCpfFromRequest($req);
+        if (!$cpfDigits) {
             return response()->json(['message' => 'CPF obrigatório'], 400);
         }
-
-        $cpfDigits = preg_replace('/\D+/', '', $cpf);
         if (strlen($cpfDigits) !== 11 || !$this->validaCpf($cpfDigits)) {
             return response()->json(['message' => 'CPF inválido'], 422);
         }
@@ -296,15 +309,13 @@ class ReuniaoController extends Controller
             ->paginate($req->integer('per_page', 10));
     }
 
-    // GET /api/participante/reunioes/{id}  (?cpf=XXXXXXXXXXX)
+    // GET /api/participante/reunioes/{id}  (header X-CPF | query/body cpf)
     public function participantShow(Request $req, $id)
     {
-        $cpf = $req->attributes->get('cpf_participante') ?? $req->input('cpf');
-        if (!$cpf) {
+        $cpfDigits = $this->getCpfFromRequest($req);
+        if (!$cpfDigits) {
             return response()->json(['message' => 'CPF obrigatório'], 400);
         }
-
-        $cpfDigits = preg_replace('/\D+/', '', $cpf);
         if (strlen($cpfDigits) !== 11 || !$this->validaCpf($cpfDigits)) {
             return response()->json(['message' => 'CPF inválido'], 422);
         }
@@ -330,21 +341,16 @@ class ReuniaoController extends Controller
     }
 
     /**
-     * GET /api/reunioes/{id}/participantes-by-cpf?cpf=XXXXXXXXXXX
+     * GET /api/reunioes/{id}/participantes-by-cpf
      * Retorna os participantes da reunião SOMENTE se o CPF informado participa dela.
      * Não expõe CPFs dos demais participantes.
      */
     public function participantesByCpf($id, Request $request)
     {
-        $cpf = $request->attributes->get('cpf_participante') // caso algum middleware injete
-            ?? $request->query('cpf')                        // querystring
-            ?? null;
-
-        if (!$cpf) {
+        $cpfDigits = $this->getCpfFromRequest($request);
+        if (!$cpfDigits) {
             return response()->json(['message' => 'CPF obrigatório'], Response::HTTP_BAD_REQUEST);
         }
-
-        $cpfDigits = preg_replace('/\D+/', '', $cpf);
         if (strlen($cpfDigits) !== 11 || !$this->validaCpf($cpfDigits)) {
             return response()->json(['message' => 'CPF inválido'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -361,8 +367,7 @@ class ReuniaoController extends Controller
         // Carrega participantes sem expor CPF
         $reuniao = Reuniao::with(['participantes' => function ($q) {
             $q->select('id', 'reuniao_id', 'nome', 'email', 'papel');
-        }])
-            ->findOrFail($id);
+        }])->findOrFail($id);
 
         return response()->json([
             'participantes' => $reuniao->participantes,

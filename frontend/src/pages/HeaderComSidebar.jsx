@@ -69,7 +69,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         const nome = data?.user?.name ?? data?.name;
         if (nome) localStorage.setItem("user_name", nome);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const toggle = () => setOpen((v) => !v);
@@ -131,7 +131,10 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             Reuniões
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
+          <Typography
+            variant="body2"
+            sx={{ fontSize: 12, color: "#B0C4DE" }}
+          >
             Painel de Controle
           </Typography>
         </Box>
@@ -194,7 +197,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
             <ListItemText primary="Editar Usuário" />
           </ListItemButton>
 
-          <ListItemButton
+          {/* <ListItemButton
             component={NavLink}
             to="/configuracoes"
             sx={(t) => ({
@@ -213,7 +216,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
               <SettingsIcon />
             </ListItemIcon>
             <ListItemText primary="Configurações" />
-          </ListItemButton>
+          </ListItemButton> */}
         </List>
       </Box>
 
@@ -256,9 +259,9 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
             </IconButton>
           )}
 
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          {/* <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Reuniões
-          </Typography>
+          </Typography> */}
 
           <Box sx={{ flex: 1 }} />
 
@@ -368,7 +371,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
               const nome = data?.user?.name ?? data?.name;
               if (nome) localStorage.setItem("user_name", nome);
             }
-          } catch {}
+          } catch { }
         }}
       />
     </>

@@ -18,7 +18,7 @@ use App\Http\Controllers\PasswordResetController;
 Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store'); // cadastro
 Route::post('/login', [AuthController::class, 'login']);                               // login
 
-// 🔐 RECUPERAÇÃO DE SENHA (públicas)
+//  RECUPERAÇÃO DE SENHA (públicas)
 Route::post('/forgot-password', [PasswordResetController::class, 'sendLink']); // envia e-mail com token
 Route::post('/reset-password', [PasswordResetController::class, 'reset']);     // redefine senha com token
 

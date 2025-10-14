@@ -1,62 +1,220 @@
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import "../style/home.css";
-import { useAuth } from "../services/useAuth"; // ✅ usar o hook
+// src/pages/Home.jsx
+import * as React from "react";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import {
+  Box,
+  Container,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CardHeader,
+  Button,
+  Stack,
+  Avatar,
+  Link,
+} from "@mui/material";
+import { useAuth } from "../services/useAuth";
 
-// ✅ Imagens
+// Imagens
 import partnersIcon from "../assets/partners.png";
 import videoConferenceIcon from "../assets/video-conference.png";
 import sendIcon from "../assets/send.png";
 
-const Home = () => {
+export default function Home() {
   const navigate = useNavigate();
-  const { asVisitor } = useAuth(); // 👈 não precisamos mais do asParticipant aqui
+  const { asVisitor } = useAuth();
 
   const handleVisitante = () => {
-    asVisitor();                 // seta mode="visitor"
+    asVisitor();
     navigate("/dashboard-visitante");
   };
 
   const handleParticipante = () => {
-    // Agora só navega para a página dedicada do CPF
-    navigate("/participante"); // 👈 nova rota com o formulário de CPF
+    navigate("/participante");
   };
 
   return (
-    <div className="home-container" style={{ textAlign: "center", padding: "2rem" }}>
-      <h1 id="titulo-1">Bem-vindo ao site de Reuniões</h1>
+    <Box sx={{ width: "100vw", overflowX: "hidden" }}>
+      {/* HERO ocupando 100% da tela */}
+      <Box
+        sx={{
+          width: "100vw",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          background:
+            "linear-gradient(180deg, rgba(99,102,241,0.18) 0%, rgba(99,102,241,0.05) 100%)",
+          borderBottom: (t) => `1px solid ${t.palette.divider}`,
+          px: 2,
+        }}
+      >
+        <Container maxWidth="lg">
+          <Stack
+            direction="column"
+            spacing={3}
+            sx={{ alignItems: "center" }}
+          >
+            <Typography
+              variant="h3"
+              component="h1"
+              sx={{ fontWeight: 700, letterSpacing: 0.3 }}
+            >
+              Bem-vindo ao site de Reuniões
+            </Typography>
 
-      <div className="box-texto" style={{ margin: "1rem 0" }}>
-        <h2>Este site tem como intuito administrar suas reuniões de forma prática e fácil.</h2>
-      </div>
+            <Typography
+              variant="h6"
+              color="text.secondary"
+              sx={{ maxWidth: 900 }}
+            >
+              Administre suas reuniões de forma prática e fácil — crie, gerencie
+              participantes e compartilhe convites em poucos cliques.
+            </Typography>
 
-      <h1 className="titulo-paragrafo">O que vamos encontrar dentro deste site?</h1>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              sx={{ mt: 1, flexWrap: "wrap", justifyContent: "center" }}
+            >
+              <Button
+                variant="contained"
+                size="large"
+                component={RouterLink}
+                to="/cadastrar"
+              >
+                Cadastre-se
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                component={RouterLink}
+                to="/login"
+              >
+                Login
+              </Button>
+              <Button variant="text" size="large" onClick={handleVisitante}>
+                Entrar como visitante
+              </Button>
+              <Button variant="text" size="large" onClick={handleParticipante}>
+                Participante
+              </Button>
+            </Stack>
+          </Stack>
+        </Container>
+      </Box>
 
-      <div className="conteudo-ameacas" style={{ display: "flex", justifyContent: "center", gap: "2rem", margin: "2rem 0" }}>
-        <div className="conteudo-box">
-          <img src={partnersIcon} alt="Imagem de organização das reuniões" height="40" width="40" />
-          <p>Prática organização das reuniões</p>
-        </div>
-        <div className="conteudo-box">
-          <img src={videoConferenceIcon} alt="Imagem de participante em uma reunião" height="40" width="40" />
-          <p>Listagem dos participantes com seus dados empresariais</p>
-        </div>
-        <div className="conteudo-box">
-          <img src={sendIcon} alt="Imagem de envio" height="40" width="40" />
-          <p>Envio de reuniões via WhatsApp</p>
-        </div>
-      </div>
+      {/* CONTEÚDO ABAIXO */}
+      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
+        <Typography
+          variant="h5"
+          align="center"
+          sx={{ fontWeight: 700, mb: { xs: 4, md: 6 } }}
+        >
+          O que você encontra aqui?
+        </Typography>
 
-      <div className="box-links" style={{ display: "flex", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
-        <Link to="/cadastrar" className="btn btn-primary">Cadastre-se</Link>
-        <Link to="/login" className="btn btn-secondary">Login</Link>
-        <button onClick={handleVisitante} className="btn btn-success">Entrar como visitante</button>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ height: "100%", borderRadius: 3, boxShadow: 2 }}>
+              <CardHeader
+                avatar={
+                  <Avatar
+                    src={partnersIcon}
+                    alt="Organização"
+                    sx={{ width: 48, height: 48 }}
+                  />
+                }
+                title="Organização prática"
+                titleTypographyProps={{ variant: "h6", fontWeight: 700 }}
+              />
+              <CardContent>
+                <Typography color="text.secondary">
+                  Crie e acompanhe reuniões com filtros por data, status e
+                  responsáveis — tudo centralizado.
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
 
-        {/* 👇 Botão simples que leva para a tela dedicada do CPF */}
-        <button onClick={handleParticipante} className="btn btn-info">Participante</button>
-      </div>
-    </div>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ height: "100%", borderRadius: 3, boxShadow: 2 }}>
+              <CardHeader
+                avatar={
+                  <Avatar
+                    src={videoConferenceIcon}
+                    alt="Participantes"
+                    sx={{ width: 48, height: 48 }}
+                  />
+                }
+                title="Participantes visíveis"
+                titleTypographyProps={{ variant: "h6", fontWeight: 700 }}
+              />
+              <CardContent>
+                <Typography color="text.secondary">
+                  Liste participantes com dados empresariais e atalhos úteis
+                  (WhatsApp, e-mail, telefone).
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={4}>
+            <Card sx={{ height: "100%", borderRadius: 3, boxShadow: 2 }}>
+              <CardHeader
+                avatar={
+                  <Avatar
+                    src={sendIcon}
+                    alt="Envio"
+                    sx={{ width: 48, height: 48 }}
+                  />
+                }
+                title="Convites rápidos"
+                titleTypographyProps={{ variant: "h6", fontWeight: 700 }}
+              />
+              <CardContent>
+                <Typography color="text.secondary">
+                  Compartilhe reuniões via WhatsApp em segundos, sem sair do
+                  fluxo.
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        <Box
+          sx={{
+            mt: { xs: 6, md: 10 },
+            p: { xs: 3, md: 4 },
+            borderRadius: 3,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            textAlign: "center",
+          }}
+        >
+          <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
+            Novo por aqui?
+          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            justifyContent="center"
+          >
+            <Button variant="contained" component={RouterLink} to="/cadastrar">
+              Começar agora
+            </Button>
+            <Link
+              component={RouterLink}
+              to="/dashboard-visitante"
+              underline="hover"
+              sx={{ alignSelf: "center" }}
+            >
+              Ver demonstração (visitante)
+            </Link>
+          </Stack>
+        </Box>
+      </Container>
+    </Box>
   );
-};
-
-export default Home;
+}

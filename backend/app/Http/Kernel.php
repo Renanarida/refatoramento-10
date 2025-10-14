@@ -68,7 +68,11 @@ class Kernel extends HttpKernel
     'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 
     // ---- adiciona aqui os teus ----
-    'cpf.participant' => \App\Http\Middleware\IdentificarParticipantePorCpf::class,
     'role' => \App\Http\Middleware\EnsureRole::class,
     ];
+
+    protected $routeMiddleware = [
+    // ...
+    'cpf.participant' => \App\Http\Middleware\CpfParticipant::class,
+];
 }

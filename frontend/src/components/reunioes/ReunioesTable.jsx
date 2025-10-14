@@ -1,5 +1,5 @@
 // src/components/reunioes/ReunioesTable.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import API from "../../services/api";
 import { useAuth } from "../../services/useAuth";
 import {
@@ -15,6 +15,7 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 const EV_SALVA = "reuniao:salva";
 const normalizeCpf = (v = "") => String(v).replace(/\D+/g, "");
 
+/* -------------------- Modal Participantes -------------------- */
 function ModalParticipantes({ open, onClose, reuniao, loading, error, participantes }) {
   const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
 
@@ -42,13 +43,9 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
 
   const initial = (nome = "") => (nome?.trim?.()[0] || "?").toUpperCase();
 
-  // snackbar "CPF copiado"
   const [copied, setCopied] = useState(false);
   const copyText = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {}
+    try { await navigator.clipboard.writeText(text); setCopied(true); } catch {}
   };
 
   return (
@@ -69,22 +66,9 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
               const cpfFmt = fmtCpf(p?.cpf ?? "");
               const telFmt = fmtTelDisplay(p?.telefone ?? "");
               const wa = waUrl(p?.telefone ?? "");
-
-              // 🔹 tenta várias chaves (e também dentro de pivot)
               const cargo =
-                p?.cargo ??
-                p?.profissao ??
-                p?.papel ??
-                p?.funcao ??
-                p?.role ??
-                p?.job_title ??
-                p?.ocupacao ??
-                p?.pivot?.cargo ??
-                p?.pivot?.profissao ??
-                p?.pivot?.papel ??
-                p?.pivot?.funcao ??
-                "—";
-
+                p?.cargo ?? p?.profissao ?? p?.papel ?? p?.funcao ?? p?.role ?? p?.job_title ?? p?.ocupacao ??
+                p?.pivot?.cargo ?? p?.pivot?.profissao ?? p?.pivot?.papel ?? p?.pivot?.funcao ?? "—";
               const email = p?.email ?? p?.pivot?.email ?? "—";
 
               return (
@@ -93,24 +77,18 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
                     <CardHeader
                       avatar={<Avatar>{initial(p?.nome)}</Avatar>}
                       title={p?.nome || "—"}
-                      // subheader com email + Papel:
                       subheader={
                         <>
-                          <Typography variant="body2" color="text.secondary">
-                            {email}
-                          </Typography>
-                          <Typography variant="body2">
-                            <strong>Papel:</strong> {cargo}
-                          </Typography>
+                          <Typography variant="body2" color="text.secondary"><strong>Email:</strong> {email}</Typography>
+                          <Typography variant="body2"><strong>Papel:</strong> {cargo}</Typography>
                         </>
                       }
                       sx={{ pb: 0 }}
                     />
                     <CardContent sx={{ pt: 1 }}>
                       <Stack spacing={1.25}>
-                        {/* CPF */}
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                          <Typography variant="caption" color="text.secondary">CPF</Typography>
+                          <Typography variant="caption" color="text.secondary"><strong>CPF</strong></Typography>
                           <Chip size="small" label={cpfFmt} />
                           {cpfDigits && (
                             <Tooltip title="Copiar CPF">
@@ -121,20 +99,12 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
                           )}
                         </Stack>
 
-                        {/* Telefone */}
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                          <Typography variant="caption" color="text.secondary">Telefone</Typography>
+                          <Typography variant="caption" color="text.secondary"><strong>Telefone</strong></Typography>
                           <Typography variant="body2">{telFmt}</Typography>
                           {wa && (
                             <Tooltip title="Abrir WhatsApp">
-                              <IconButton
-                                size="small"
-                                component={Link}
-                                href={wa}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label="whatsapp"
-                              >
+                              <IconButton size="small" component={Link} href={wa} target="_blank" rel="noopener noreferrer" aria-label="whatsapp">
                                 <WhatsAppIcon fontSize="inherit" color="success" />
                               </IconButton>
                             </Tooltip>
@@ -165,6 +135,7 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
   );
 }
 
+/* -------------------- Tabela de Reuniões -------------------- */
 export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
   const { isAdmin, isUser, isParticipant } = useAuth();
 
@@ -182,7 +153,7 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
   const [itens, setItens] = useState([]);
 
   // ordenação
-  const [sortKey, setSortKey] = useState("data");     // ajuste ao seu padrão
+  const [sortKey, setSortKey] = useState("data");
   const [sortDir, setSortDir] = useState("asc");
 
   // modal participantes
@@ -211,52 +182,68 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
     return arr;
   }, [itens, sortKey, sortDir]);
 
-  // fetch
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        let endpoint = "/reunioes";
-        if (isParticipant) endpoint = "/participante/reunioes";
+  /* -------- fetchList: extraído para reutilizar -------- */
+  const fetchList = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const endpoint =
+        isAdmin || isUser ? "/reunioes"
+        : isParticipant ? "/participante/reunioes"
+        : "/public/reunioes";
 
-        // envia CPF no header quando modo participante
-        if (isParticipant) {
-          const cpf = localStorage.getItem("cpf");
-          if (cpf) API.defaults.headers["X-CPF"] = normalizeCpf(cpf);
-        }
-
-        const { data } = await API.get(endpoint, {
-          params: {
-            q: q || undefined,
-            data_ini: dataIni || undefined,
-            data_fim: dataFim || undefined,
-            page, per_page: perPage,
-          },
-        });
-
-        if (!alive) return;
-        const rows = Array.isArray(data) ? data : (data?.data ?? []);
-        setItens(rows);
-        setTotal(data?.total ?? rows.length);
-        setLastPage(data?.last_page ?? 1);
-      } catch (e) {
-        if (!alive) return;
-        setErr(e?.response?.data?.message || "Erro ao carregar reuniões.");
-      } finally {
-        if (alive) setLoading(false);
+      if (isParticipant) {
+        const cpfLS = localStorage.getItem("cpf");
+        if (cpfLS) API.defaults.headers.common["X-CPF"] = normalizeCpf(cpfLS);
+      } else {
+        delete API.defaults.headers.common["X-CPF"];
       }
-    })();
-    return () => { alive = false; };
-  }, [q, dataIni, dataFim, page, perPage, refreshTick, isParticipant]);
 
+      const { data } = await API.get(endpoint, {
+        params: {
+          q: q || undefined,
+          data_ini: dataIni || undefined,
+          data_fim: dataFim || undefined,
+          page, per_page: perPage,
+        },
+      });
+
+      const rows = Array.isArray(data) ? data : (data?.data ?? []);
+      setItens(rows);
+      setTotal(data?.total ?? rows.length);
+      setLastPage(data?.last_page ?? 1);
+    } catch (e) {
+      setErr(e?.response?.data?.message || "Erro ao carregar reuniões.");
+    } finally {
+      setLoading(false);
+    }
+  }, [isAdmin, isUser, isParticipant, q, dataIni, dataFim, page, perPage]);
+
+  // -------- FETCH LISTA --------
+  useEffect(() => { fetchList(); }, [fetchList, refreshTick]);
+
+  // Também escuta o evento global EV_SALVA (opcional)
+  useEffect(() => {
+    const handler = () => fetchList();
+    window.addEventListener(EV_SALVA, handler);
+    return () => window.removeEventListener(EV_SALVA, handler);
+  }, [fetchList]);
+
+  // -------- AÇÕES --------
   const excluir = async (id) => {
     if (!confirm("Tem certeza que deseja excluir?")) return;
-    await API.delete(`/reunioes/${id}`);
-    window.dispatchEvent(new Event(EV_SALVA));
-    // força refresh
-    setPage(1);
+    try {
+      await API.delete(`/reunioes/${id}`);
+
+      // Se era o último item da página e existe página anterior, volta uma página; senão, apenas refaz o fetch
+      if (itens.length === 1 && page > 1) {
+        setPage((p) => p - 1); // o useEffect/fetchList roda com a mudança de page
+      } else {
+        await fetchList();
+      }
+    } catch (e) {
+      setErr(e?.response?.data?.message || "Erro ao excluir.");
+    }
   };
 
   const abrirModalParticipantes = async (reuniao) => {
@@ -268,10 +255,13 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
 
     try {
       if (isParticipant) {
-        const cpf = localStorage.getItem("cpf");
-        if (!cpf) throw new Error("Informe seu CPF para listar suas reuniões.");
-        const { data } = await API.get(`/participante/reunioes`, { params: { cpf: normalizeCpf(cpf) } });
-        setModalParticipantes(Array.isArray(data?.participantes) ? data.participantes : []);
+        const cpfLS = localStorage.getItem("cpf");
+        if (!cpfLS) throw new Error("Informe seu CPF para listar os participantes.");
+        API.defaults.headers.common["X-CPF"] = normalizeCpf(cpfLS);
+
+        const { data } = await API.get(`/reunioes/${reuniao.id}/participantes-by-cpf`);
+        const list = Array.isArray(data?.participantes) ? data.participantes : [];
+        setModalParticipantes(list);
       } else {
         const { data } = await API.get(`/reunioes/${reuniao.id}`);
         setModalParticipantes(Array.isArray(data?.participantes) ? data.participantes : []);
@@ -283,6 +273,7 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
     }
   };
 
+  /* -------------------- RENDER -------------------- */
   return (
     <Paper elevation={1} sx={{ p: 2 }}>
       {/* Filtros / Ações */}
@@ -385,7 +376,13 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
                         <Button size="small" variant="contained" color="warning" onClick={() => onEditar(r)}>
                           Editar
                         </Button>
-                        <Button size="small" variant="contained" color="error" onClick={() => excluir(r.id)} sx={{ ml: 1 }}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="error"
+                          onClick={() => excluir(r.id)}
+                          sx={{ ml: 1 }}
+                        >
                           Excluir
                         </Button>
                       </>

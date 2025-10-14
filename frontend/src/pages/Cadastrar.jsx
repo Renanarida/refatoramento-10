@@ -1,14 +1,35 @@
+// src/pages/Cadastrar.jsx
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import logo from "../assets/Reuniao-email.png";
-import "../style/cadastrar.css";
 
-const Cadastrar = () => {
+// Material UI
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Alert,
+  Stack,
+  Link,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+} from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+
+export default function Cadastrar() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [senhaConfirm, setSenhaConfirm] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarSenha2, setMostrarSenha2] = useState(false);
+
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,15 +54,15 @@ const Cadastrar = () => {
         senha,
       });
 
-      setSucesso("Usuário cadastrado com sucesso!");
-      // limpa form
-      setNome("");
-      setEmail("");
-      setSenha("");
-      setSenhaConfirm("");
+      if (data) {
+        setSucesso("Usuário cadastrado com sucesso!");
+        setNome("");
+        setEmail("");
+        setSenha("");
+        setSenhaConfirm("");
 
-      // redireciona pro login
-      setTimeout(() => navigate("/login", { replace: true }), 1200);
+        setTimeout(() => navigate("/login", { replace: true }), 1200);
+      }
     } catch (error) {
       setErro(error?.response?.data?.message || "Erro ao cadastrar usuário.");
     } finally {
@@ -50,88 +71,146 @@ const Cadastrar = () => {
   };
 
   return (
-    <div
-      className="d-flex justify-content-center align-items-center"
-      style={{ backgroundColor: "#0b1aa5" }} // azul do print
+    <Box
+      sx={{
+        width: "100vw",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.default",
+        background:
+          "linear-gradient(180deg, rgba(11,26,165,0.18) 0%, rgba(11,26,165,0.06) 100%)",
+        px: 2,
+      }}
     >
-      <div className="card p-4" style={{ width: 350 }}>
-        <h3 className="mb-3">Cadastro</h3>
+      <Container maxWidth="sm">
+        <Paper
+          elevation={6}
+          sx={{
+            p: { xs: 3, sm: 4 },
+            borderRadius: 3,
+            width: { xs: "92vw", sm: 440 },
+            mx: "auto",
+          }}
+        >
+          <Stack spacing={2} component="form" onSubmit={handleSubmit}>
+            <Box
+              component="img"
+              src={logo}
+              alt="Cadastro"
+              sx={{
+                width: "100%",
+                borderRadius: 2,
+                boxShadow: 2,
+                mb: 1,
+                objectFit: "cover",
+              }}
+            />
 
-        <img
-          src={logo}
-          alt="Cadastro"
-          className="mb-3 mx-auto d-block"
-          style={{ width: "100%", borderRadius: 12, boxShadow: "0 6px 16px rgba(0,0,0,.25)" }}
-        />
+            <Typography
+              variant="h5"
+              align="center"
+              sx={{ fontWeight: 700, color: "primary.main", mb: 1 }}
+            >
+              Cadastro
+            </Typography>
 
-        {erro && <div className="alert alert-danger">{erro}</div>}
-        {sucesso && <div className="alert alert-success">{sucesso}</div>}
+            {erro && <Alert severity="error">{erro}</Alert>}
+            {sucesso && <Alert severity="success">{sucesso}</Alert>}
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="form-label" htmlFor="nome">Nome</label>
-            <input
+            <TextField
               id="nome"
-              type="text"
-              className="form-control"
+              label="Nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               required
               autoComplete="name"
+              fullWidth
             />
-          </div>
 
-          <div className="mb-3">
-            <label className="form-label" htmlFor="email">Email</label>
-            <input
+            <TextField
               id="email"
+              label="Email"
               type="email"
-              className="form-control"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              fullWidth
             />
-          </div>
 
-          <div className="mb-3">
-            <label className="form-label" htmlFor="senha">Senha</label>
-            <input
+            <TextField
               id="senha"
-              type="password"
-              className="form-control"
+              label="Senha"
+              type={mostrarSenha ? "text" : "password"}
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               required
               autoComplete="new-password"
+              fullWidth
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setMostrarSenha((v) => !v)}
+                      edge="end"
+                      aria-label="mostrar senha"
+                    >
+                      {mostrarSenha ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
-          </div>
 
-          <div className="mb-3">
-            <label className="form-label" htmlFor="senha2">Confirmar Senha</label>
-            <input
+            <TextField
               id="senha2"
-              type="password"
-              className="form-control"
+              label="Confirmar senha"
+              type={mostrarSenha2 ? "text" : "password"}
               value={senhaConfirm}
               onChange={(e) => setSenhaConfirm(e.target.value)}
               required
               autoComplete="new-password"
+              fullWidth
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setMostrarSenha2((v) => !v)}
+                      edge="end"
+                      aria-label="mostrar confirmação de senha"
+                    >
+                      {mostrarSenha2 ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
-          </div>
 
-          <button type="submit" className="btn btn-primary w-100" disabled={loading}>
-            {loading ? "Cadastrando..." : "Cadastrar"}
-          </button>
-        </form>
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={loading}
+              sx={{ mt: 1 }}
+            >
+              {loading ? (
+                <CircularProgress size={22} sx={{ color: "common.white" }} />
+              ) : (
+                "Cadastrar"
+              )}
+            </Button>
 
-        {/* Linhas de ajuda no rodapé, no mesmo modelo do Login */}
-        <div className="mt-2 text-center">
-          Já tem conta? <Link to="/login">Faça login</Link>
-        </div>
-      </div>
-    </div>
+            <Typography variant="body2" align="center" color="text.secondary">
+              Já tem conta?{" "}
+              <Link component={RouterLink} to="/login" underline="hover">
+                Faça login
+              </Link>
+            </Typography>
+          </Stack>
+        </Paper>
+      </Container>
+    </Box>
   );
-};
-
-export default Cadastrar;
+}
