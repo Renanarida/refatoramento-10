@@ -17,6 +17,8 @@ const normalizeCpf = (v = "") => String(v).replace(/\D+/g, "");
 
 /* -------------------- Modal Participantes -------------------- */
 function ModalParticipantes({ open, onClose, reuniao, loading, error, participantes }) {
+  const [copied, setCopied] = useState(false);
+
   const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
 
   const fmtCpf = (v = "") => {
@@ -43,8 +45,6 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
 
   const initial = (nome = "") => (nome?.trim?.()[0] || "?").toUpperCase();
 
-  // snackbar "CPF copiado"
-  const [copied, setCopied] = useState(false);
   const copyText = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -71,7 +71,6 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
               const telFmt = fmtTelDisplay(p?.telefone ?? "");
               const wa = waUrl(p?.telefone ?? "");
 
-              // tenta várias chaves (e também dentro de pivot)
               const cargo =
                 p?.cargo ?? p?.profissao ?? p?.papel ?? p?.funcao ?? p?.role ?? p?.job_title ?? p?.ocupacao ??
                 p?.pivot?.cargo ?? p?.pivot?.profissao ?? p?.pivot?.papel ?? p?.pivot?.funcao ?? "—";
@@ -157,7 +156,11 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
 
 /* -------------------- Tabela de Reuniões -------------------- */
 export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
-  const { isAdmin, isUser, isParticipant } = useAuth();
+  // >>>>>>> AJUSTE AQUI: considerar "qualquer logado"
+  const auth = useAuth();
+  const { isAdmin, isUser, isParticipant } = auth;
+  const isLogged =
+    !!auth?.isAuthenticated || !!auth?.user || !!localStorage.getItem("token"); // fallback seguro
 
   // filtros / estado
   const [q, setQ] = useState("");
@@ -183,7 +186,8 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
   const [modalError, setModalError] = useState(null);
   const [modalParticipantes, setModalParticipantes] = useState([]);
 
-  const showActions = isAdmin || isUser || isParticipant;
+  // >>>>>>> AJUSTE AQUI
+  const showActions = isAdmin || isUser || isParticipant || isLogged;
 
   const ordenar = (key) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -211,18 +215,17 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
       try {
         // endpoint por modo
         const endpoint =
-          isAdmin || isUser ? "/reunioes"
+          (isAdmin || isUser || isLogged) ? "/reunioes"
           : isParticipant ? "/participante/reunioes"
           : "/public/reunioes";
 
         // header X-CPF quando participante
-        if (isParticipant) {
+        if (isParticipant && !isLogged) {
           const cpfLS = localStorage.getItem("cpf");
           if (cpfLS) {
             API.defaults.headers.common["X-CPF"] = normalizeCpf(cpfLS);
           }
         } else {
-          // remove se não for participante
           delete API.defaults.headers.common["X-CPF"];
         }
 
@@ -248,7 +251,7 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
       }
     })();
     return () => { alive = false; };
-  }, [q, dataIni, dataFim, page, perPage, refreshTick, isAdmin, isUser, isParticipant]);
+  }, [q, dataIni, dataFim, page, perPage, refreshTick, isAdmin, isUser, isParticipant, isLogged]);
 
   // -------- AÇÕES --------
   const excluir = async (id) => {
@@ -266,20 +269,18 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
     setModalParticipantes([]);
 
     try {
-      if (isParticipant) {
+      if (isParticipant && !isLogged) {
         const cpfLS = localStorage.getItem("cpf");
         if (!cpfLS) throw new Error("Informe seu CPF para listar os participantes.");
         // garante header
         API.defaults.headers.common["X-CPF"] = normalizeCpf(cpfLS);
 
         // endpoint específico que respeita o CPF
-        const { data } = await API.get(`/reunioes/${reuniao.id}/participantes-by-cpf`, {
-          // se preferir, também pode mandar no query param:
-          // params: { cpf: normalizeCpf(cpfLS) },
-        });
+        const { data } = await API.get(`/reunioes/${reuniao.id}/participantes-by-cpf`);
         const list = Array.isArray(data?.participantes) ? data.participantes : [];
         setModalParticipantes(list);
       } else {
+        // usuário autenticado (admin/user) ou admin
         const { data } = await API.get(`/reunioes/${reuniao.id}`);
         setModalParticipantes(Array.isArray(data?.participantes) ? data.participantes : []);
       }
@@ -398,8 +399,13 @@ export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
                         </Button>
                       </>
                     )}
-                    {(isAdmin || isUser || isParticipant) && (
-                      <Button size="small" variant="outlined" onClick={() => abrirModalParticipantes(r)} sx={{ ml: isAdmin ? 1 : 0 }}>
+                    {(isAdmin || isUser || isLogged || isParticipant) && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => abrirModalParticipantes(r)}
+                        sx={{ ml: isAdmin ? 1 : 0, textTransform: "uppercase" }}
+                      >
                         Participantes
                       </Button>
                     )}
