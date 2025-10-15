@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, NavLink, Link, useLocation } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import EditUserModal from "../components/reunioes/EditaUSerModal.jsx";
+import { useAuth } from "../services/useAuth";
 
 // MUI
 import {
@@ -20,12 +21,11 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import EventNoteIcon from "@mui/icons-material/EventNote";
-import SettingsIcon from "@mui/icons-material/Settings";
 import EditIcon from "@mui/icons-material/Edit";
 import LogoutIcon from "@mui/icons-material/Logout";
 
@@ -38,12 +38,19 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
   const [me, setMe] = useState(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef(null);
-  const navigate = useNavigate();
+  const { user, token } = useAuth();
   const location = useLocation();
 
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up("md"));
 
+  // --- REGRAS DE ROTAS / AUTENTICAÇÃO ---
+  const isParticipante = location.pathname.startsWith("/participante");
+  const isVisitante    = location.pathname.startsWith("/visitante");
+  const isGuestArea    = isParticipante || isVisitante; // prioridade total
+  const isAuthed       = Boolean(token || me?.id || user?.id || (!isGuestArea && localStorage.getItem("token")));
+
+  // Nome real (se logado)
   const userNameFromStorage = useMemo(() => {
     return (
       (userNameProp && String(userNameProp).trim()) ||
@@ -53,28 +60,29 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
     );
   }, [userNameProp]);
 
-  const userName = me?.name || userNameFromStorage;
+  const realName    = me?.name || userNameFromStorage;
+  const displayName = isGuestArea ? (isParticipante ? "Participante" : "Visitante") : realName;
 
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
+    const tokenLS = localStorage.getItem("token");
+    if (!tokenLS) return;
+    fetch(`${API}/me`, { headers: { Authorization: `Bearer ${tokenLS}` } })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
         setMe(data?.user || data || null);
         const nome = data?.user?.name ?? data?.name;
         if (nome) localStorage.setItem("user_name", nome);
       })
-      .catch(() => { });
+      .catch(() => {});
   }, []);
 
   const toggle = () => setOpen((v) => !v);
 
-  const initials = (userName || "")
+  const initials = (displayName || "")
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
@@ -82,15 +90,15 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
     .join("");
 
   const openPicker = () => {
-    if (busy) return;
+    if (busy || !isAuthed) return;
     fileRef.current?.click();
   };
 
   const onPick = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const token = localStorage.getItem("token");
-    if (!token) {
+    const tokenLS = localStorage.getItem("token");
+    if (!tokenLS) {
       alert("Faça login para trocar a foto.");
       e.target.value = "";
       return;
@@ -102,7 +110,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
 
       const resp = await fetch(`${API}/me/avatar`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${tokenLS}` },
         body: form,
       });
 
@@ -119,7 +127,6 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
   };
 
   const openEditUser = () => {
-    console.log("[HeaderComSidebar] Abrindo modal de editar usuário");
     setShowEditUser(true);
     setOpen(false);
   };
@@ -131,11 +138,8 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             Reuniões
           </Typography>
-          <Typography
-            variant="body2"
-            sx={{ fontSize: 12, color: "#B0C4DE" }}
-          >
-            Painel de Controle
+          <Typography variant="body2" sx={{ fontSize: 12, color: "#B0C4DE" }}>
+            {isGuestArea ? (isParticipante ? "Área do Participante" : "Área do Visitante") : "Painel de Controle"}
           </Typography>
         </Box>
         {!mdUp && (
@@ -148,10 +152,11 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
 
       <Box sx={{ flex: 1, py: 1 }}>
         <List disablePadding>
+          {/* Sempre visível */}
           <ListItemButton
             component={NavLink}
             to="/reunioes"
-            sx={(t) => ({
+            sx={{
               mx: 1,
               borderRadius: 2,
               "&.active": {
@@ -161,7 +166,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
                   fontWeight: 600,
                 },
               },
-            })}
+            }}
           >
             <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
               <EventNoteIcon />
@@ -169,72 +174,56 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
             <ListItemText primary="Reuniões" />
           </ListItemButton>
 
-          <ListItemButton
-            component={NavLink}
-            to="/dashboard"
-            sx={(t) => ({
-              mx: 1,
-              borderRadius: 2,
-              "&.active": {
-                background: "rgba(255,255,255,0.15)",
-                "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
-                  color: "#fff",
-                  fontWeight: 600,
-                },
-              },
-            })}
-          >
-            <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
-              <DashboardIcon />
-            </ListItemIcon>
-            <ListItemText primary="Dashboard" />
-          </ListItemButton>
+          {/* Só logado e fora da área pública */}
+          {isAuthed && !isGuestArea && (
+            <>
+              <ListItemButton
+                component={NavLink}
+                to="/dashboard"
+                sx={{
+                  mx: 1,
+                  borderRadius: 2,
+                  "&.active": {
+                    background: "rgba(255,255,255,0.15)",
+                    "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
+                      color: "#fff",
+                      fontWeight: 600,
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
+                  <DashboardIcon />
+                </ListItemIcon>
+                <ListItemText primary="Dashboard" />
+              </ListItemButton>
 
-          <ListItemButton onClick={openEditUser} sx={{ mx: 1, borderRadius: 2 }}>
-            <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
-              <EditIcon />
-            </ListItemIcon>
-            <ListItemText primary="Editar Usuário" />
-          </ListItemButton>
-
-          {/* <ListItemButton
-            component={NavLink}
-            to="/configuracoes"
-            sx={(t) => ({
-              mx: 1,
-              borderRadius: 2,
-              "&.active": {
-                background: "rgba(255,255,255,0.15)",
-                "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
-                  color: "#fff",
-                  fontWeight: 600,
-                },
-              },
-            })}
-          >
-            <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
-              <SettingsIcon />
-            </ListItemIcon>
-            <ListItemText primary="Configurações" />
-          </ListItemButton> */}
+              <ListItemButton onClick={openEditUser} sx={{ mx: 1, borderRadius: 2 }}>
+                <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
+                  <EditIcon />
+                </ListItemIcon>
+                <ListItemText primary="Editar Usuário" />
+              </ListItemButton>
+            </>
+          )}
         </List>
       </Box>
 
       <Divider sx={{ opacity: 0.2, borderColor: "rgba(255,255,255,0.2)" }} />
-      <Box sx={{ p: 1 }}>
-        <List disablePadding>
-          <ListItemButton
-            component={Link}
-            to="/logout"
-            sx={{ borderRadius: 2, mx: 1 }}
-          >
-            <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
-              <LogoutIcon />
-            </ListItemIcon>
-            <ListItemText primary="Sair" />
-          </ListItemButton>
-        </List>
-      </Box>
+
+      {/* "Sair" só se estiver autenticado */}
+      {isAuthed && !isGuestArea && (
+        <Box sx={{ p: 1 }}>
+          <List disablePadding>
+            <ListItemButton component={Link} to="/logout" sx={{ borderRadius: 2, mx: 1 }}>
+              <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
+                <LogoutIcon />
+              </ListItemIcon>
+              <ListItemText primary="Sair" />
+            </ListItemButton>
+          </List>
+        </Box>
+      )}
     </Box>
   );
 
@@ -259,33 +248,37 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
             </IconButton>
           )}
 
-          {/* <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Reuniões
-          </Typography> */}
-
           <Box sx={{ flex: 1 }} />
 
-          <Tooltip title={busy ? "Enviando..." : "Clique para trocar a foto"}>
+          <Tooltip
+            title={
+              isGuestArea
+                ? "Área pública — faça login para trocar a foto"
+                : (busy ? "Enviando..." : "Clique para trocar a foto")
+            }
+          >
             <Box
-              onClick={openPicker}
+              onClick={isGuestArea ? undefined : openPicker}
               sx={{
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                cursor: busy ? "not-allowed" : "pointer",
+                cursor: isGuestArea ? "default" : (busy ? "not-allowed" : "pointer"),
                 opacity: busy ? 0.7 : 1,
                 pr: 0.5,
               }}
             >
               <Badge overlap="circular" variant="dot" color="success">
-                {me?.avatar_url ? (
+                {isAuthed && !isGuestArea && me?.avatar_url ? (
                   <Avatar src={me.avatar_url} alt="avatar" sx={{ width: 32, height: 32 }} />
                 ) : (
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: "#1E3A8A" }}>{initials || "U"}</Avatar>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: "#1E3A8A" }}>
+                    {initials || "U"}
+                  </Avatar>
                 )}
               </Badge>
-              <Typography variant="body2" noWrap maxWidth={160} title={userName}>
-                {userName}
+              <Typography variant="body2" noWrap maxWidth={160} title={displayName}>
+                {displayName}
               </Typography>
 
               <input
@@ -294,7 +287,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
                 accept="image/png,image/jpeg,image/webp"
                 onChange={onPick}
                 style={{ display: "none" }}
-                disabled={busy}
+                disabled={busy || isGuestArea}
               />
             </Box>
           </Tooltip>
@@ -362,16 +355,16 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         user={me}
         onSaved={async () => {
           try {
-            const token = localStorage.getItem("token");
-            if (!token) return;
-            const r = await fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } });
+            const tokenLS = localStorage.getItem("token");
+            if (!tokenLS) return;
+            const r = await fetch(`${API}/me`, { headers: { Authorization: `Bearer ${tokenLS}` } });
             if (r.ok) {
               const data = await r.json();
               setMe(data?.user || data || null);
               const nome = data?.user?.name ?? data?.name;
               if (nome) localStorage.setItem("user_name", nome);
             }
-          } catch { }
+          } catch {}
         }}
       />
     </>

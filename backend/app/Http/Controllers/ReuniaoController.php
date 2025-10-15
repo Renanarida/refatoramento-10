@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reuniao;
-use Carbon\Carbon;
 use App\Models\ReuniaoParticipante;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReuniaoController extends Controller
 {
@@ -18,9 +19,9 @@ class ReuniaoController extends Controller
      */
     private function getCpfFromRequest(Request $req): ?string
     {
-        $raw = $req->attributes->get('cpf_participante')   // setado por middleware cpf.participant (se houver)
-            ?? $req->header('X-CPF')                       // header enviado pelo frontend
-            ?? $req->input('cpf')                          // body/query
+        $raw = $req->attributes->get('cpf_participante')
+            ?? $req->header('X-CPF')
+            ?? $req->input('cpf')
             ?? null;
 
         if (!$raw) return null;
@@ -42,48 +43,123 @@ class ReuniaoController extends Controller
                     $w->where('titulo', 'like', $term)->orWhere('descricao', 'like', $term);
                 });
             })
-            ->orderBy('data')->orderBy('hora');
+            ->orderBy('data')
+            ->orderBy('hora');
 
         return $q->paginate($req->integer('per_page', 10));
     }
 
     /**
-     * GET /api/reunioes/stats  -> usado pelos cards
+     * GET /api/reunioes/stats  -> protegida (auth:sanctum)
      */
-    public function stats()
+    public function stats(Request $req)
     {
-        $now = now('America/Sao_Paulo');
-        $end48 = $now->copy()->addHours(48);
+        return $this->computeStats();
+    }
 
-        $base = Reuniao::query();
+    /**
+     * GET /api/public/reunioes/stats -> pública (sem login)
+     * Mantém o mesmo shape de resposta da protegida.
+     */
+    public function statsPublic(Request $req)
+    {
+        return $this->computeStats();
+    }
 
-        $total       = (clone $base)->count();
-        $hojeCount   = (clone $base)->whereDate('data', $now->toDateString())->count();
-        $amanhaCount = (clone $base)->whereDate('data', $now->copy()->addDay()->toDateString())->count();
+    /**
+     * Implementação única para calcular as estatísticas (cards)
+     * - Detecta coluna de data existente (inicio | data_hora | data)
+     * - Se houver par (data, hora), usa TIMESTAMP(data,hora) para 48h
+     * - Retorna chaves planas compatíveis com o frontend
+     */
+    private function computeStats()
+    {
+        try {
+            $tz  = 'America/Sao_Paulo';
+            $now = Carbon::now($tz);
+            $end48 = $now->copy()->addHours(48);
 
-        $prox48hCount = Reuniao::whereBetween(
-            DB::raw("TIMESTAMP(data, COALESCE(hora, '00:00:00'))"),
-            [$now->toDateTimeString(), $end48->toDateTimeString()]
-        )->count();
+            // Detecta a melhor estratégia de data/hora
+            $schema = DB::getSchemaBuilder();
+            $hasInicio   = $schema->hasColumn('reunioes', 'inicio');      // datetime
+            $hasDataHora = $schema->hasColumn('reunioes', 'data_hora');   // datetime
+            $hasData     = $schema->hasColumn('reunioes', 'data');        // date
+            $hasHora     = $schema->hasColumn('reunioes', 'hora');        // time
 
-        return response()->json([
-            'resumo' => [
-                'total'         => $total,
-                'hoje'          => $hojeCount,
-                'amanha'        => $amanhaCount,
-                'proximas_48h'  => $prox48hCount,
-            ],
-            'ref' => [
-                'agora'    => $now->toDateTimeString(),
-                'ate_48h'  => $end48->toDateTimeString(),
-                'tz'       => 'America/Sao_Paulo',
-            ],
-        ]);
+            // total
+            $total = DB::table('reunioes')->count();
+
+            // hoje / amanha por WHERE DATE(...)
+            $hojeCount = 0;
+            $amanhaCount = 0;
+
+            if ($hasInicio) {
+                $hojeCount   = DB::table('reunioes')->whereDate('inicio', $now->toDateString())->count();
+                $amanhaCount = DB::table('reunioes')->whereDate('inicio', $now->copy()->addDay()->toDateString())->count();
+            } elseif ($hasDataHora) {
+                $hojeCount   = DB::table('reunioes')->whereDate('data_hora', $now->toDateString())->count();
+                $amanhaCount = DB::table('reunioes')->whereDate('data_hora', $now->copy()->addDay()->toDateString())->count();
+            } elseif ($hasData) {
+                $hojeCount   = DB::table('reunioes')->whereDate('data', $now->toDateString())->count();
+                $amanhaCount = DB::table('reunioes')->whereDate('data', $now->copy()->addDay()->toDateString())->count();
+            } else {
+                throw new \RuntimeException("Não encontrei coluna de data em 'reunioes' (tentado: inicio, data_hora, data).");
+            }
+
+            // próximas 48h
+            if ($hasInicio) {
+                $prox48h = DB::table('reunioes')
+                    ->whereBetween('inicio', [$now->toDateTimeString(), $end48->toDateTimeString()])
+                    ->count();
+            } elseif ($hasDataHora) {
+                $prox48h = DB::table('reunioes')
+                    ->whereBetween('data_hora', [$now->toDateTimeString(), $end48->toDateTimeString()])
+                    ->count();
+            } elseif ($hasData && $hasHora) {
+                // Combina data + hora
+                $prox48h = DB::table('reunioes')
+                    ->whereBetween(
+                        DB::raw("TIMESTAMP(`data`, COALESCE(`hora`, '00:00:00'))"),
+                        [$now->toDateTimeString(), $end48->toDateTimeString()]
+                    )
+                    ->count();
+            } elseif ($hasData) {
+                // Só data disponível -> aproximação usando 00:00
+                $prox48h = DB::table('reunioes')
+                    ->whereBetween('data', [$now->toDateString(), $end48->toDateString()])
+                    ->count();
+            } else {
+                // não deve chegar aqui por causa do throw anterior
+                $prox48h = 0;
+            }
+
+            return response()->json([
+                'total'        => $total,
+                'hoje'         => $hojeCount,
+                'amanha'       => $amanhaCount,
+                'proximas_48h' => $prox48h, // chave que alguns componentes usam
+                'prox_48h'     => $prox48h, // compat com outros
+                'ref' => [
+                    'tz'      => $tz,
+                    'agora'   => $now->toDateTimeString(),
+                    'ate_48h' => $end48->toDateTimeString(),
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Erro em /reunioes/stats: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'message' => 'Erro ao calcular estatísticas.',
+                'error'   => app()->isProduction() ? null : $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function cards()
     {
-        return $this->stats();
+        return $this->computeStats();
     }
 
     public function statsPeriodos(Request $req)
@@ -396,8 +472,8 @@ class ReuniaoController extends Controller
         }
 
         return response()->json([
-            'ok'      => true,
-            'exists'  => $exists,
+            'ok'       => true,
+            'exists'   => $exists,
             'reunioes' => $reunioes,
         ]);
     }

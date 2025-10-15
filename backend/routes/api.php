@@ -18,22 +18,21 @@ use App\Http\Controllers\PasswordResetController;
 Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store'); // cadastro
 Route::post('/login', [AuthController::class, 'login']);                               // login
 
-//  RECUPERAÇÃO DE SENHA (públicas)
-Route::post('/forgot-password', [PasswordResetController::class, 'sendLink']); // envia e-mail com token
-Route::post('/reset-password', [PasswordResetController::class, 'reset']);     // redefine senha com token
+// RECUPERAÇÃO DE SENHA (públicas)
+Route::post('/forgot-password', [PasswordResetController::class, 'sendLink']);
+Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
-// ✅✅✅ CHECK CPF (PÚBLICA | fora de auth:sanctum e fora de cpf.participant)
+// ✅ CHECK CPF (PÚBLICA)
 Route::post('/participante/check-cpf', [ReuniaoController::class, 'checkCpf'])
-    ->middleware('throttle:20,1'); // evita brute force
+    ->middleware('throttle:20,1');
 
 // ---------- PÚBLICO (sem login, sem CPF) ----------
-Route::get('/public/reunioes', [ReuniaoController::class, 'publicIndex']); // <- fora do cpf.participant
+Route::get('/public/reunioes', [ReuniaoController::class, 'publicIndex']);
+Route::get('/public/reunioes/stats', [ReuniaoController::class, 'statsPublic']); // ← pública de verdade
 
 // ---------- PARTICIPANTE (sem login, mas requer CPF) ----------
 Route::middleware('cpf.participant')->group(function () {
-    // Participante via CPF (header X-CPF OU query ?cpf=)
     Route::get('/reunioes/{id}/participantes-by-cpf', [ReuniaoController::class, 'participantesByCpf']);
-
     Route::get('/participante/reunioes', [ReuniaoController::class, 'participantIndex']);
     Route::get('/participante/reunioes/{id}', [ReuniaoController::class, 'participantShow']);
 });
@@ -41,25 +40,22 @@ Route::middleware('cpf.participant')->group(function () {
 // ---------- ROTAS PROTEGIDAS (require auth:sanctum) ----------
 Route::middleware('auth:sanctum')->group(function () {
 
-    // sessão
+    // sessão / perfil
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
-    Route::put('/me', [AuthController::class, 'updateMe']); // editar perfil (nome, email)
+    Route::put('/me', [AuthController::class, 'updateMe']);
 
-    // perfil: upload de avatar
+    // upload de avatar (exemplo mantido)
     Route::post('/me/avatar', function (Request $request) {
         $request->validate([
             'avatar' => ['required','image','mimes:png,jpg,jpeg,webp','max:2048'],
         ]);
 
         $user = $request->user();
-
         if ($user->avatar_path && Storage::disk('public')->exists($user->avatar_path)) {
             Storage::disk('public')->delete($user->avatar_path);
         }
-
         $path = $request->file('avatar')->store('avatars', 'public');
-
         $user->avatar_path = $path;
         $user->save();
 
@@ -71,13 +67,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ---------- REUNIÕES ----------
     Route::prefix('reunioes')->group(function () {
-        // leitura
-        Route::get('/', [ReuniaoController::class, 'index']);              // GET /api/reunioes
-        Route::get('/stats', [ReuniaoController::class, 'stats']);         // GET /api/reunioes/stats
-        Route::get('/stats-periodos', [ReuniaoController::class, 'statsPeriodos']); // GET /api/reunioes/stats-periodos
-        Route::get('/cards', [ReuniaoController::class, 'cards']);         // GET /api/reunioes/cards
+        Route::get('/', [ReuniaoController::class, 'index']);
+        Route::get('/stats', [ReuniaoController::class, 'stats']);                 // ← protegida
+        Route::get('/stats-periodos', [ReuniaoController::class, 'statsPeriodos']);
+        Route::get('/cards', [ReuniaoController::class, 'cards']);
 
-        // 🔚 deixa por último para não capturar "stats-periodos"
+        // Deixa por último para não capturar "stats-periodos"
         Route::get('/{reuniao}', [ReuniaoController::class, 'show']);
 
         // escrita (ADMIN)
