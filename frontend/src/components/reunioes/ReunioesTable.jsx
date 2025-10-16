@@ -1,7 +1,7 @@
-// src/components/reunioes/ReunioesTable.jsx
 import { useEffect, useMemo, useState } from "react";
 import API from "../../services/api";
 import { useAuth } from "../../services/useAuth";
+import { maskCpf } from "../../utils/masks";
 import {
   Paper, Box, Grid, TextField, Select, MenuItem, InputLabel, FormControl,
   Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
@@ -18,6 +18,7 @@ const normalizeCpf = (v = "") => String(v).replace(/\D+/g, "");
 /* -------------------- Modal Participantes -------------------- */
 function ModalParticipantes({ open, onClose, reuniao, loading, error, participantes }) {
   const [copied, setCopied] = useState(false);
+  const { isAdmin } = useAuth(); // << pega papel do usuário
 
   const onlyDigits = (v = "") => String(v).replace(/\D/g, "");
 
@@ -26,6 +27,14 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
     if (!d) return "—";
     const p1 = d.slice(0, 3), p2 = d.slice(3, 6), p3 = d.slice(6, 9), p4 = d.slice(9, 11);
     return [p1, p2, p3].filter(Boolean).join(".") + (p4 ? "-" + p4 : "");
+  };
+
+  // Mostra apenas os 2 últimos dígitos (***.***.***-XX)
+  const maskCpfLast2 = (v = "") => {
+    const d = onlyDigits(v);
+    if (d.length < 2) return "—";
+    const last2 = d.slice(-2);
+    return `***.***.***-${last2}`;
   };
 
   const fmtTelDisplay = (v = "") => {
@@ -100,8 +109,11 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
                         {/* CPF */}
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                           <Typography variant="caption" color="text.secondary"><strong>CPF</strong></Typography>
-                          <Chip size="small" label={cpfFmt} />
-                          {cpfDigits && (
+                          <Chip
+                            size="small"
+                            label={isAdmin ? cpfFmt : maskCpfLast2(p?.cpf)}
+                          />
+                          {isAdmin && cpfDigits && (
                             <Tooltip title="Copiar CPF">
                               <IconButton size="small" onClick={() => copyText(cpfDigits)} aria-label="copiar cpf">
                                 <ContentCopyIcon fontSize="inherit" />
@@ -114,7 +126,7 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                           <Typography variant="caption" color="text.secondary"><strong>Telefone</strong></Typography>
                           <Typography variant="body2">{telFmt}</Typography>
-                          {wa && (
+                          {isAdmin && wa && (
                             <Tooltip title="Abrir WhatsApp">
                               <IconButton
                                 size="small"
