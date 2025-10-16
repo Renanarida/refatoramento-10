@@ -156,7 +156,7 @@ function ModalParticipantes({ open, onClose, reuniao, loading, error, participan
 
 /* -------------------- Tabela de Reuniões -------------------- */
 export default function ReunioesTable({ onNova, onEditar, refreshTick }) {
-  // >>>>>>> AJUSTE AQUI: considerar "qualquer logado"
+  
   const auth = useAuth();
   const { isAdmin, isUser, isParticipant } = auth;
   const isLogged =

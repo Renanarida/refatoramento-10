@@ -1,4 +1,3 @@
-// src/services/useAuth.js
 import React, {
   createContext,
   useContext,
@@ -33,9 +32,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Hidrata no load e confirma no /me
+  
   useEffect(() => {
-    setAuthHeaderFromStorage(); // garante Bearer após F5
+    setAuthHeaderFromStorage(); 
 
     // Participante (X-CPF)
     const savedCpf = (localStorage.getItem("cpf") || "").replace(/\D+/g, "");

@@ -28,6 +28,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import EditIcon from "@mui/icons-material/Edit";
 import LogoutIcon from "@mui/icons-material/Logout";
+import LoginIcon from "@mui/icons-material/Login";
 
 const API = "http://localhost:8000/api";
 const DRAWER_WIDTH = 260;
@@ -45,12 +46,22 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
   const mdUp = useMediaQuery(theme.breakpoints.up("md"));
 
   // --- REGRAS DE ROTAS / AUTENTICAÇÃO ---
-  const isParticipante = location.pathname.startsWith("/participante");
-  const isVisitante    = location.pathname.startsWith("/visitante");
-  const isGuestArea    = isParticipante || isVisitante; // prioridade total
-  const isAuthed       = Boolean(token || me?.id || user?.id || (!isGuestArea && localStorage.getItem("token")));
+  const path = (location.pathname || "").toLowerCase();
 
-  // Nome real (se logado)
+  // cobre: /participante, /participante/... , /dashboard-participante, ...-participante
+  const isParticipante =
+    /(^\/participante(\/|$))|(^\/dashboard-participante(\/|$))|(-participante(\/|$))/.test(path);
+
+  // cobre: /visitante, /visitante/... , /dashboard-visitante, ...-visitante
+  const isVisitante =
+    /(^\/visitante(\/|$))|(^\/dashboard-visitante(\/|$))|(-visitante(\/|$))/.test(path);
+
+  const isGuestArea = isParticipante || isVisitante; // APENAS nessas rotas mostramos "Fazer Login"
+  const isAuthed = Boolean(
+    token || me?.id || user?.id || (!isGuestArea && localStorage.getItem("token"))
+  );
+
+  // Nome
   const userNameFromStorage = useMemo(() => {
     return (
       (userNameProp && String(userNameProp).trim()) ||
@@ -60,10 +71,11 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
     );
   }, [userNameProp]);
 
-  const realName    = me?.name || userNameFromStorage;
+  const realName = me?.name || userNameFromStorage;
   const displayName = isGuestArea ? (isParticipante ? "Participante" : "Visitante") : realName;
 
   useEffect(() => {
+    // fecha o drawer ao trocar rota
     setOpen(false);
   }, [location.pathname]);
 
@@ -133,13 +145,26 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
 
   const DrawerContent = (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <Box sx={{ px: 2, py: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      {/* Cabeçalho do drawer */}
+      <Box
+        sx={{
+          px: 2,
+          py: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             Reuniões
           </Typography>
           <Typography variant="body2" sx={{ fontSize: 12, color: "#B0C4DE" }}>
-            {isGuestArea ? (isParticipante ? "Área do Participante" : "Área do Visitante") : "Painel de Controle"}
+            {isGuestArea
+              ? isParticipante
+                ? "Área do Participante"
+                : "Área do Visitante"
+              : "Painel de Controle"}
           </Typography>
         </Box>
         {!mdUp && (
@@ -148,8 +173,10 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
           </IconButton>
         )}
       </Box>
+
       <Divider sx={{ opacity: 0.2, borderColor: "rgba(255,255,255,0.2)" }} />
 
+      {/* Lista de navegação */}
       <Box sx={{ flex: 1, py: 1 }}>
         <List disablePadding>
           {/* Sempre visível */}
@@ -174,7 +201,32 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
             <ListItemText primary="Reuniões" />
           </ListItemButton>
 
-          {/* Só logado e fora da área pública */}
+          {/* Mostrar "Fazer Login" SOMENTE nas rotas públicas detectadas */}
+          {isGuestArea && (
+            <ListItemButton
+              component={NavLink}
+              to="/login"
+              sx={{
+                mx: 1,
+                borderRadius: 2,
+                "&.active": {
+                  background: "rgba(255,255,255,0.15)",
+                  "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
+                    color: "#fff",
+                    fontWeight: 600,
+                  },
+                },
+              }}
+              selected={location.pathname === "/login"}
+            >
+              <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
+                <LoginIcon />
+              </ListItemIcon>
+              <ListItemText primary="Fazer Login" />
+            </ListItemButton>
+          )}
+
+          {/* Itens apenas para autenticados fora da área pública */}
           {isAuthed && !isGuestArea && (
             <>
               <ListItemButton
@@ -204,26 +256,19 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
                 </ListItemIcon>
                 <ListItemText primary="Editar Usuário" />
               </ListItemButton>
+
+              <ListItemButton component={Link} to="/logout" sx={{ mx: 1, borderRadius: 2 }}>
+                <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
+                  <LogoutIcon />
+                </ListItemIcon>
+                <ListItemText primary="Sair" />
+              </ListItemButton>
             </>
           )}
         </List>
       </Box>
 
       <Divider sx={{ opacity: 0.2, borderColor: "rgba(255,255,255,0.2)" }} />
-
-      {/* "Sair" só se estiver autenticado */}
-      {isAuthed && !isGuestArea && (
-        <Box sx={{ p: 1 }}>
-          <List disablePadding>
-            <ListItemButton component={Link} to="/logout" sx={{ borderRadius: 2, mx: 1 }}>
-              <ListItemIcon sx={{ minWidth: 40, color: "#fff" }}>
-                <LogoutIcon />
-              </ListItemIcon>
-              <ListItemText primary="Sair" />
-            </ListItemButton>
-          </List>
-        </Box>
-      )}
     </Box>
   );
 
@@ -254,7 +299,9 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
             title={
               isGuestArea
                 ? "Área pública — faça login para trocar a foto"
-                : (busy ? "Enviando..." : "Clique para trocar a foto")
+                : busy
+                ? "Enviando..."
+                : "Clique para trocar a foto"
             }
           >
             <Box
@@ -263,7 +310,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                cursor: isGuestArea ? "default" : (busy ? "not-allowed" : "pointer"),
+                cursor: isGuestArea ? "default" : busy ? "not-allowed" : "pointer",
                 opacity: busy ? 0.7 : 1,
                 pr: 0.5,
               }}
@@ -306,12 +353,8 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
               color: "#fff",
               borderRight: 0,
               "& .MuiListItemIcon-root": { color: "#fff" },
-              "& .MuiListItemButton:hover": {
-                backgroundColor: "rgba(255,255,255,0.08)",
-              },
-              "& .MuiListItemButton.Mui-selected": {
-                backgroundColor: "rgba(255,255,255,0.15)",
-              },
+              "& .MuiListItemButton:hover": { backgroundColor: "rgba(255,255,255,0.08)" },
+              "& .MuiListItemButton.Mui-selected": { backgroundColor: "rgba(255,255,255,0.15)" },
             },
           }}
         >
@@ -329,12 +372,8 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
               bgcolor: "#0A1A3C",
               color: "#fff",
               "& .MuiListItemIcon-root": { color: "#fff" },
-              "& .MuiListItemButton:hover": {
-                backgroundColor: "rgba(255,255,255,0.08)",
-              },
-              "& .MuiListItemButton.Mui-selected": {
-                backgroundColor: "rgba(255,255,255,0.15)",
-              },
+              "& .MuiListItemButton:hover": { backgroundColor: "rgba(255,255,255,0.08)" },
+              "& .MuiListItemButton.Mui-selected": { backgroundColor: "rgba(255,255,255,0.15)" },
             },
           }}
         >
@@ -342,7 +381,7 @@ export default function HeaderComSidebar({ userName: userNameProp }) {
         </Drawer>
       )}
 
-      {/* Spacer do AppBar */}
+      {/* Espaço do AppBar */}
       <Toolbar sx={{ mb: 0 }} />
 
       {/* Modal Editar Usuário */}
