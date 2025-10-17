@@ -17,7 +17,7 @@ export default function ReunioesPage() {
     <>
       <HeaderComSidebar />
 
-      <div className="container py-4">
+      <div className="container p-4 py-5 mr-5 bg-eu-mando rounded-3 shadow-lg">
         {/* Se quiser, os cards também atualizam */}
         <CardsReunioes refreshTick={refreshTick} /> 
 

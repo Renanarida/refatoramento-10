@@ -1,26 +1,53 @@
-/* zera qualquer empurrão herdado do header/sidebar */
-.app-shell,
-.app-content {
-  margin-left: 0 !important;
-  padding-left: 0 !important;
+
+
+body {
+    margin: 0;
+    display: flex;
+    place-items: center;
+    min-width: 320px;
+    min-height: 100vh;
+    flex-direction: column;
 }
 
-/* centraliza o que vem do <Outlet /> */
-.app-content {
-  display: flex;
-  justify-content: center;   /* centro horizontal */
-  align-items: center;   /* mude para center se quiser no meio da tela */
-  padding: 24px;
-  min-height: calc(100vh - 64px); /* ajusta pela altura do header se for ~64px */
-  box-sizing: border-box;
+.bg-eu-mando {
+    background-color:#0A1A3C;
 }
 
-/* opcional: limita largura do miolo */
-.app-container {
-  width: 100%;
-  max-width: 980px;          /* ajuste a gosto */
+.css-ja80vf {
+  margin: auto !important;
+  width: 100vh;
 }
 
-/* .css-ja80vf {
-  width: 100%;
-} */
+
+@media (min-width: 600px) {
+    .css-1xo576c-MuiToolbar-root {
+        display: none;
+    }
+}
+
+@media (min-width: 800px) {
+    .css-1xo576c-MuiToolbar-root {
+        display: none;
+    }
+    .bg-eu-mando {
+        margin: 100px;
+    }
+}
+
+@media (min-width: 1180px) {
+    .css-1xo576c-MuiToolbar-root {
+        min-width: 260px !important;
+    }
+    .bg-eu-mando {
+        margin: 0px;
+    }
+
+   /* .css-ja80vf {
+        min-width: 260px;
+    } */
+}
+
+.css-ww7y7v {
+    position: absolute !important;
+    top: 85px !important;
+}

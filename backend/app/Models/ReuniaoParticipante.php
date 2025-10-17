@@ -13,17 +13,24 @@ class ReuniaoParticipante extends Model
         'nome',
         'email',
         'cpf',
+        'telefone',
         'papel',
-    // 'telefone', // 👈 novo campo
-];
+    ];
 
     public $timestamps = true;
 
-    // Sempre salvar apenas dígitos no CPF
-    public function setCpfAttribute($value)
+    /** Sempre salvar apenas dígitos no CPF */
+    public function setCpfAttribute($value): void
     {
-        $digits = preg_replace('/\D/', '', (string)$value);
+        $digits = preg_replace('/\D/', '', (string) $value);
         $this->attributes['cpf'] = $digits ?: null;
+    }
+
+    /** Sempre salvar apenas dígitos no telefone */
+    public function setTelefoneAttribute($value): void
+    {
+        $digits = preg_replace('/\D/', '', (string) $value);
+        $this->attributes['telefone'] = $digits ?: null;
     }
 
     public function reuniao()
